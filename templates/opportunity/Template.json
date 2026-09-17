@@ -1,0 +1,161 @@
+{
+  "id": "opportunity",
+  "schema_version": 2,
+  "version": 2,
+  "identity": {
+    "strategy": "id"
+  },
+  "on_missing": "error",
+  "allow_create_folder": true,
+  "parent": {
+    "note_name": "Customers",
+    "match_fields": [
+      "name",
+      "title"
+    ],
+    "alias_field": "aliases",
+    "frontmatter_field": "customer",
+    "link_back_section": "## Opportunities",
+    "child_subpath": "Opportunities",
+    "derived_tag": "customer/{slug}"
+  },
+  "root": {
+    "type": "md",
+    "own_folder": true,
+    "plain_filename": true,
+    "filename_max_length": 0,
+    "filename_must_equal_title": true,
+    "on_existing_title": "error",
+    "frontmatter_key_order": [
+      "type",
+      "id",
+      "title",
+      "customer",
+      "status",
+      "stage",
+      "product",
+      "route",
+      "draws_against",
+      "partner",
+      "technologies",
+      "expected_consumption",
+      "expected_monthly_usd",
+      "created",
+      "updated",
+      "tags"
+    ],
+    "frontmatter_defaults": {
+      "type": "Opportunity",
+      "status": "Open",
+      "stage": "Identified",
+      "product": [],
+      "route": "unknown",
+      "draws_against": "",
+      "partner": [],
+      "technologies": [],
+      "expected_consumption": "",
+      "expected_monthly_usd": "",
+      "updated": "{today}",
+      "tags": [
+        "kind/opportunity"
+      ]
+    },
+    "frontmatter_enums": {
+      "status": [
+        "Open",
+        "Won",
+        "Lost",
+        "On Hold",
+        "Disengaged"
+      ],
+      "stage": [
+        "Identified",
+        "Qualified",
+        "Proposed",
+        "Committed",
+        "Closed"
+      ],
+      "product": [
+        "azure",
+        "private-cloud",
+        "gpuaas",
+        "compass",
+        "m365",
+        "services",
+        "marketplace-isv",
+        "other"
+      ],
+      "route": [
+        "direct-ea-mca",
+        "csp",
+        "marketplace-private-offer",
+        "marketplace-mpo",
+        "unknown"
+      ]
+    },
+    "frontmatter_rules": [
+      "status in {Won,Lost} requires stage == Closed",
+      "stage == Closed requires status in {Won,Lost}",
+      "route == csp requires draws_against == \"\"",
+      "draws_against non-empty requires route in {direct-ea-mca,marketplace-private-offer,marketplace-mpo}",
+      "partner values must resolve to an existing note under Work/Partners",
+      "tags must contain kind/opportunity and customer/{slug of customer}",
+      "expected_monthly_usd is an integer USD figure or \"\"; never prose",
+      "updated must be rewritten on every machine or human edit"
+    ],
+    "yaml_style": {
+      "scalars": "double_quoted",
+      "arrays": "flow",
+      "empty_string": "\"\"",
+      "empty_array": "[]"
+    },
+    "sections": [
+      {
+        "name": "Summary",
+        "access": "machine_write",
+        "required_non_empty": true
+      },
+      {
+        "name": "Actions",
+        "access": "machine_write",
+        "required_non_empty": true
+      },
+      {
+        "name": "Related",
+        "access": "machine_write",
+        "required_non_empty": true
+      },
+      {
+        "name": "History & Captures",
+        "access": "machine_write",
+        "required_non_empty": true
+      }
+    ],
+    "children_index_section": "History & Captures",
+    "children": [
+      {
+        "suffix": "history",
+        "frontmatter_defaults": {
+          "type": "History",
+          "tags": [
+            "kind/history"
+          ]
+        },
+        "name_template": "{title} History",
+        "display_label": "History"
+      },
+      {
+        "suffix": "captures",
+        "frontmatter_defaults": {
+          "type": "Captures",
+          "tags": [
+            "kind/captures"
+          ]
+        },
+        "name_template": "{title} Captures",
+        "display_label": "Captures"
+      }
+    ],
+    "plain_folder": true
+  }
+}

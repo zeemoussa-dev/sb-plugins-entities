@@ -1,0 +1,88 @@
+{
+  "id": "partner",
+  "schema_version": 2,
+  "version": 2,
+  "identity": {
+    "strategy": "id"
+  },
+  "on_missing": "error",
+  "allow_create_folder": true,
+  "parent": {
+    "note_name": "Partners",
+    "match_fields": [
+      "name",
+      "title"
+    ],
+    "alias_field": "aliases",
+    "frontmatter_field": "affiliate_of",
+    "link_back_section": "## Affiliates",
+    "required": false,
+    "on_missing": "auto_create",
+    "child_subpath": "Affiliates"
+  },
+  "root": {
+    "type": "md",
+    "own_folder": true,
+    "plain_filename": true,
+    "plain_folder": true,
+    "on_existing_title": "error",
+    "frontmatter_defaults": {
+      "type": "Partner",
+      "affiliate_of": "",
+      "tags": [
+        "kind/partner"
+      ]
+    },
+    "sections": [
+      {
+        "name": "Summary",
+        "access": "machine_write"
+      },
+      {
+        "name": "Personal Notes",
+        "access": "human_only"
+      },
+      {
+        "name": "Actions",
+        "access": "machine_write"
+      },
+      {
+        "name": "Related",
+        "access": "machine_write"
+      },
+      {
+        "name": "Affiliates",
+        "access": "machine_write"
+      },
+      {
+        "name": "History & Captures",
+        "access": "machine_write"
+      }
+    ],
+    "children_index_section": "History & Captures",
+    "children": [
+      {
+        "suffix": "history",
+        "frontmatter_defaults": {
+          "type": "History",
+          "tags": [
+            "kind/history"
+          ]
+        },
+        "name_template": "{title} History",
+        "display_label": "History"
+      },
+      {
+        "suffix": "captures",
+        "frontmatter_defaults": {
+          "type": "Captures",
+          "tags": [
+            "kind/captures"
+          ]
+        },
+        "name_template": "{title} Captures",
+        "display_label": "Captures"
+      }
+    ]
+  }
+}
