@@ -5,6 +5,8 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- chore: 1.0.1 -- built for framework API v3 (framework `ADR-025`, which lets a plugin contribute a Cockpit tab). Nothing in this plugin changed; the host loads only plugins built for its exact API version, so a republish is what keeps Entities loadable after that bump.
+
 - docs: `CLAUDE.md` and `MEMORY.md` for this repository (framework `ADR-023`): a session opened here works on
   this plugin alone, with the Plugin API boundary, the on-disk format rule and the Templates rule.
 
