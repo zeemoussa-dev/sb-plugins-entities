@@ -16,7 +16,10 @@ class Customers:
         """Every hub tag (`customer/<slug>`, `partner/<slug>`) -> the hub note's `name`.
         Build it once and pass it to `customer_from_tags` when resolving many notes."""
         mapping: dict[str, str] = {}
-        for entry in self._api.vault.index().values():
+        # Every note, not the by-name map: a hub sharing its name with another note
+        # is missing from that map, and its whole Customer then resolves to nothing
+        # (framework BUG-076, Plugin API v5).
+        for entry in self._api.vault.entries():
             if entry["frontmatter"].get("type") not in ("Customer", "Partner"):
                 continue
             name = entry["frontmatter"].get("name")

@@ -18,6 +18,10 @@ INDEX = {
     "Some thread": {"stem": "Some thread", "frontmatter": {"type": "Thread"}, "tags": ["customer/adnoc"]},
 }
 
+# A hub note whose name is taken by another note, so it is absent from the by-name
+# map the plugin used to sweep (framework BUG-076).
+HIDDEN_HUB = {"stem": "Masdar", "frontmatter": {"type": "Customer", "name": "Masdar"}, "tags": ["customer/masdar"]}
+
 
 class FakeData:
     def __init__(self):
@@ -34,7 +38,10 @@ class FakeApi:
     def __init__(self, experts=None, sections=None):
         self.plugin_id = "entities"
         self.data = FakeData()
-        self.vault = type("Vault", (), {"index": staticmethod(lambda: dict(INDEX))})()
+        self.vault = type("Vault", (), {
+            "index": staticmethod(lambda: dict(INDEX)),
+            "entries": staticmethod(lambda: [*INDEX.values(), HIDDEN_HUB]),
+        })()
         self.agents = type("Agents", (), {"list_experts": staticmethod(lambda: list(experts or []))})()
         self.sections = type("Sections", (), {"get": staticmethod(lambda sid: (sections or {}).get(sid))})()
         self.seed_data_files, self.people_folders, self.services = [], [], {}
@@ -152,6 +159,15 @@ def test_the_customer_comes_from_the_hub_note_name_never_a_partner(api):
     assert customers.customer_from_tags(["partner/g42"]) is None
     assert customers.subject_enricher("email", {}, ["customer/adnoc"]) == {"customer": "Adnoc"}
     assert customers.subject_enricher("email", {}, []) == {}
+
+
+def test_a_hub_note_whose_name_is_taken_still_resolves_its_customer(api):
+    """Framework BUG-076: the by-name map holds one note per name, so a Customer
+    hub sharing its name with, say, its own introduction email was simply not
+    there -- and every Thread tagged with it showed no customer at all."""
+    customers = Customers(api)
+
+    assert customers.customer_from_tags(["customer/masdar"]) == "Masdar"
 
 
 # -- Cockpit matching --------------------------------------------------------------
