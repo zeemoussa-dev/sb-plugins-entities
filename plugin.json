@@ -2,7 +2,7 @@
   "id": "entities",
   "name": "Entities",
   "description": "Customers, Partners, Affiliates and Opportunities: the discovery registry, customer resolution, and Customer-based Expert matching in Cockpit.",
-  "version": "1.0.3",
-  "framework_api": 5,
+  "version": "1.0.4",
+  "framework_api": 6,
   "requires": []
 }

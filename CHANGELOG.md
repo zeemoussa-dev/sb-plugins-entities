@@ -5,6 +5,9 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- chore: built against Plugin API v6 (1.0.3 -> 1.0.4). No behaviour change; the host loads only plugins built for
+  its exact `framework_api`.
+
 - fix: a hub note whose name is taken by another note still resolves its Customer (1.0.3, framework API v5,
   framework `BUG-076`). `name_by_tag` swept the framework's by-name index, which holds one note per file name, so
   a Customer hub sharing its name with another note was absent and every Thread tagged with it showed no customer.
