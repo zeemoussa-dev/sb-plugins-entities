@@ -5,6 +5,9 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- chore: built against Plugin API v7 (1.0.5). No behaviour change; the host loads only plugins built for its
+  exact `framework_api`.
+
 - chore: built against Plugin API v6 (1.0.3 -> 1.0.4). No behaviour change; the host loads only plugins built for
   its exact `framework_api`.
 
