@@ -5,6 +5,8 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- chore: built against Plugin API v8 (1.0.6). The host now provides a charting library (`echarts` and `echarts-for-react`, including their subpaths, framework `ADR-039`), which moved the API to 8. No behaviour change; the host loads only plugins built for its exact API, so this republish is what keeps the plugin loading.
+
 - chore: built against Plugin API v7 (1.0.5). No behaviour change; the host loads only plugins built for its
   exact `framework_api`.
 
