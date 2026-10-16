@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from .customers import Customers
 from .matching import CockpitAgentMatcher
+from .opportunities import Opportunities
 from .registry import ENTITIES_FILE, EntitiesRegistry
 from .routes import build_router
 
@@ -23,6 +24,7 @@ def register(api) -> None:
 
     customers = Customers(api)
     api.provide_service("entities.customers", customers)
+    api.provide_service("entities.opportunities", Opportunities(api))
     api.register_subject_enricher(customers.subject_enricher)
     api.register_agent_matcher(CockpitAgentMatcher(api).match)
 

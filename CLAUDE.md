@@ -25,6 +25,7 @@ plugin.json          id, name, version, framework_api, requires
 backend/registry.py  the Entities registry (Settings/Entities.md), served under /plugins/entities/
 backend/customers.py the entities.customers service and Cockpit's customer enricher
 backend/matching.py  Cockpit Expert matching by Customer
+backend/opportunities.py  the entities.opportunities service (writes Opportunity notes)
 templates/           the customer, partner and opportunity Templates
 ui/                  the Entities settings page and the Cockpit Customer row
 tests/               this plugin's own tests; run on publish, never packaged

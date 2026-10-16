@@ -84,7 +84,7 @@ def test_register_wires_every_seam(api):
 
     assert api.seed_data_files == [ENTITIES_FILE]
     assert api.people_folders == ["Work/Customers", "Work/Partners"]
-    assert set(api.services) == {"entities.customers"}
+    assert set(api.services) == {"entities.customers", "entities.opportunities"}
     assert len(api.subject_enrichers) == 1 and len(api.agent_matchers) == 1 and len(api.routers) == 1
 
 
