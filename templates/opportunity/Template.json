@@ -1,7 +1,7 @@
 {
   "id": "opportunity",
   "schema_version": 2,
-  "version": 2,
+  "version": 3,
   "identity": {
     "strategy": "id"
   },
@@ -38,6 +38,8 @@
       "draws_against",
       "partner",
       "technologies",
+      "billing_profile",
+      "consumption_start",
       "expected_consumption",
       "expected_monthly_usd",
       "created",
@@ -53,6 +55,8 @@
       "draws_against": "",
       "partner": [],
       "technologies": [],
+      "billing_profile": "",
+      "consumption_start": "",
       "expected_consumption": "",
       "expected_monthly_usd": "",
       "updated": "{today}",
@@ -101,6 +105,10 @@
       "partner values must resolve to an existing note under Work/Partners",
       "tags must contain kind/opportunity and customer/{slug of customer}",
       "expected_monthly_usd is an integer USD figure or \"\"; never prose",
+      "billing_profile is the enrollment or billing account number the consumption lands on, or \"\"",
+      "consumption_start is a month, YYYY-MM, or \"\"; it is never after the first month of the Consumption Plan",
+      "## Consumption Plan holds one table, | Month | USD |, one row per month: YYYY-MM and an integer USD, oldest first, no month twice",
+      "expected_monthly_usd is the Consumption Plan's last month when the plan has rows",
       "updated must be rewritten on every machine or human edit"
     ],
     "yaml_style": {
@@ -114,6 +122,10 @@
         "name": "Summary",
         "access": "machine_write",
         "required_non_empty": true
+      },
+      {
+        "name": "Consumption Plan",
+        "access": "machine_write"
       },
       {
         "name": "Actions",
