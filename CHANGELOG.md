@@ -5,6 +5,22 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: the `entities.opportunities` service (1.1.0, Plugin API 9) -- a Customer's sales pipeline as its Opportunity
+  notes, its affiliates' included, for another plugin to list, create and edit without writing those notes itself
+  (the Azure Cost Manager's Pipeline first). `customers()`, `list_for_customer(customer_stem, include_affiliates=True)`,
+  `create(owner_stem, title, fields, plan)` and `update(opportunity_id, fields, plan=None)`. It writes what the Template
+  says -- own folder, plain file name, frontmatter order, defaults and enums, the `kind/opportunity` and `customer/`
+  tags, the link in the owner's `## Opportunities`, the History and Captures children -- and refuses a rule it would
+  break with `ValueError`. `update` rewrites the Consumption Plan table and logs the change in the note's History.
+  Notes are found on disk under their hub, so one created a moment ago lists before the next reindex; paths past
+  Windows' 260-character limit are handled.
+
+- feat: Opportunity Template v3. Frontmatter adds `billing_profile` (the enrollment or billing account number) and
+  `consumption_start` (`YYYY-MM`); a `## Consumption Plan` section holds a `| Month | USD |` table, one row per month;
+  `expected_monthly_usd` is that plan's last month. An install that already has the `opportunity` Template keeps it
+  (the Marketplace never overwrites one): a v2 note still lists, with those fields empty, and is brought to v3 by its
+  first edit through the service; the README gives the operator's steps for adopting the v3 Template itself.
+
 - chore: built against Plugin API v9 (1.0.7). The host now also provides `openpyxl` to plugin backends (framework `ADR-040`), which moved the API to 9. No behaviour change; the republish is what keeps the plugin loading.
 
 - chore: built against Plugin API v8 (1.0.6). The host now provides a charting library (`echarts` and `echarts-for-react`, including their subpaths, framework `ADR-039`), which moved the API to 8. No behaviour change; the host loads only plugins built for its exact API, so this republish is what keeps the plugin loading.

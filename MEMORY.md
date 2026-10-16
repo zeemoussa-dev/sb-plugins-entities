@@ -34,5 +34,31 @@ raised in the framework.
   nobody when no plugin matches -- the framework itself knows no Customer.
 - **[2026-09-17] Offer capability as a service** (`entities.customers`), so no
   other plugin ever imports this one. Plugin-to-plugin imports are refused.
+- **[2026-10-16] This plugin is the only writer of Opportunity notes from code.**
+  Another plugin uses `entities.opportunities` and never writes them itself: this
+  plugin owns the `opportunity` Template, so one writer keeps the notes to it. The
+  Plugin API has no vault write, so `backend/opportunities.py` writes files itself:
+  every path comes from a hub found in `api.vault.entries()`, never from a stem a
+  caller passed, a title must already be a valid file name, and every open goes
+  through `_long()` for Windows' 260-character limit.
+- **[2026-10-16] The service carries the Template's content as constants**
+  (`KEY_ORDER`, `DEFAULTS`, `ENUMS`, `SECTIONS`, `CHILDREN`): an installed plugin has
+  its backend but not its `templates/` folder. A test pins them to
+  `templates/opportunity/Template.json`; change both together.
+- **[2026-10-16] Template upgrades are lazy and per note, never a bulk migration.**
+  The Marketplace never overwrites an installed Template, and a migration that
+  rewrote every Opportunity note would touch operator-owned content all at once.
+  So: reads tolerate an older note (missing fields read as empty), the first edit
+  through the service adds what the newer Template has (v3: `billing_profile`,
+  `consumption_start`, the `## Consumption Plan` table) and leaves every other line
+  as it was, and the installed Template itself is the operator's to replace (README,
+  "Upgrading the opportunity Template").
+- **[2026-10-16] A Template section entry takes only `name`, `access`,
+  `required_non_empty`, `allowed_callers`.** The framework parses a section with a
+  strict dataclass; any other key makes the whole Template fail to load. Say a
+  section's format in `frontmatter_rules` instead.
+- **[2026-10-16] Opportunity notes are found on disk under their hub**
+  (`<hub>/Opportunities/<T>/<T>.md`), not in the vault index: the index is rebuilt
+  on its own schedule, and an opportunity created a moment ago must list at once.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.
