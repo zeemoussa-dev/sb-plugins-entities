@@ -5,6 +5,15 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: a Customer's signed Azure commitment on its hub note (1.3.0, Plugin API 10). `entities.customers` gains
+  `commitment(customer_stem) -> dict | None` and `set_commitment(customer_stem, commitment | None) -> dict | None`,
+  for a Customer or an affiliate. The commitment is flat frontmatter -- `macc_type`, `macc_amount`, `macc_currency`,
+  `macc_start`, `macc_end`, `macc_note`, `macc_includes_marketplace`, `macc_subtracts_credits` -- so Obsidian's
+  Properties pane shows and edits it; writing touches only those keys, and `None` removes them all. A bad value is
+  refused with `ValueError`; a hand-typed value is read as it stands. The `customer` Template documents the keys
+  (`frontmatter_enums`, `frontmatter_rules`) and keeps version 2: no section changed, and the keys are optional, so an
+  existing install needs nothing to start using them.
+
 - feat: `entities.opportunities.create_affiliate(customer_stem, name, aliases=None)` (1.2.0) -- a new affiliate under
   a top-level Customer, made the way the company Skill makes one: the hub note at
   `Work/Customers/<Parent>/Affiliates/<Name>/<Name>.md` from the `customer` Template, its own `customer/<slug>` tag on it

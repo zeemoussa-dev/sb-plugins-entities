@@ -67,5 +67,14 @@ raised in the framework.
   cannot express -- and the registry row set `Created: Yes`, or discovery makes the
   hub again. A row already discovered for that name is adopted, never duplicated.
   Affiliates nest one level under a top-level Customer here.
+- **[2026-10-17] A Customer's signed commitment lives on its hub note**, as flat
+  optional `macc_*` frontmatter (operator's decision: the note is the single source
+  of truth, editable in Obsidian). Never in `frontmatter_defaults`: a Customer with
+  no commitment carries none of the keys. Writes touch only those keys.
+- **[2026-10-17] Optional frontmatter is not a Template version bump.** `version` is
+  the sections contract a Skill pins with `requires:`; adding an optional key changes
+  no section, and bumping would refuse every Skill pinned to the old number. An
+  existing install needs nothing: the service writes the keys, and the installed
+  Template's copy only lacks their documentation.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.
