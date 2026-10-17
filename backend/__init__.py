@@ -8,6 +8,7 @@ handed to `register`; it imports nothing from the framework itself.
 """
 from __future__ import annotations
 
+from .accounts import Accounts
 from .customers import Customers
 from .matching import CockpitAgentMatcher
 from .opportunities import Opportunities
@@ -28,4 +29,4 @@ def register(api) -> None:
     api.register_subject_enricher(customers.subject_enricher)
     api.register_agent_matcher(CockpitAgentMatcher(api).match)
 
-    api.register_router(build_router(EntitiesRegistry(api)))
+    api.register_router(build_router(EntitiesRegistry(api), Accounts(api)))

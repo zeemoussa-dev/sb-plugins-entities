@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import backend
+from backend.accounts import Accounts
 from backend.customers import Customers
 from backend.matching import CockpitAgentMatcher, tag_slug
 from backend.registry import (
@@ -133,9 +134,9 @@ def test_duplicates_unknown_names_and_bad_sections_are_refused(registry):
         registry.create_entity("X", "vendor")
 
 
-def test_the_http_surface_matches_the_former_vault_entities_routes(registry):
+def test_the_http_surface_matches_the_former_vault_entities_routes(registry, api):
     app = FastAPI()
-    app.include_router(build_router(registry), prefix="/plugins/entities")
+    app.include_router(build_router(registry, Accounts(api)), prefix="/plugins/entities")
     client = TestClient(app)
 
     assert client.post("/plugins/entities/entities", json={"name": "Adnoc", "section": "customer"}).status_code == 200

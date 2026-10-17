@@ -5,6 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from .accounts import AccountConflict, Accounts
+from .opportunities import OpportunityError, OpportunityNotFound
 from .registry import DuplicateEntityError, EntitiesRegistry, EntityNotFoundError
 
 
@@ -25,8 +27,49 @@ class UpdateEntityBody(BaseModel):
     ignore: bool | None = None
 
 
-def build_router(registry: EntitiesRegistry) -> APIRouter:
+class SectionTextBody(BaseModel):
+    text: str
+    # The text the page loaded, so an edit made meanwhile in Obsidian is not overwritten.
+    previous: str
+
+
+class CaptureBody(BaseModel):
+    text: str
+
+
+def _account_call(call):
+    try:
+        return call()
+    except OpportunityNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except AccountConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except OpportunityError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def build_router(registry: EntitiesRegistry, accounts: Accounts) -> APIRouter:
     router = APIRouter()
+
+    @router.get("/accounts")
+    def list_accounts() -> dict:
+        return accounts.list()
+
+    @router.get("/accounts/{kind}/{stem}")
+    def get_account(kind: str, stem: str) -> dict:
+        return _account_call(lambda: accounts.detail(kind, stem))
+
+    @router.put("/accounts/{kind}/{stem}/personal-notes")
+    def put_personal_notes(kind: str, stem: str, body: SectionTextBody) -> dict:
+        return {"text": _account_call(lambda: accounts.set_personal_notes(kind, stem, body.text, body.previous))}
+
+    @router.put("/accounts/{kind}/{stem}/capture-notes")
+    def put_capture_notes(kind: str, stem: str, body: SectionTextBody) -> dict:
+        return _account_call(lambda: accounts.set_capture_notes(kind, stem, body.text, body.previous))
+
+    @router.post("/accounts/{kind}/{stem}/captures")
+    def post_capture(kind: str, stem: str, body: CaptureBody) -> dict:
+        return _account_call(lambda: accounts.add_capture(kind, stem, body.text))
 
     @router.get("/entities")
     def list_entities() -> dict:
