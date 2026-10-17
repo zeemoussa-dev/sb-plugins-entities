@@ -7,7 +7,7 @@ never from reversing the slug, which gets names like "Al Ain" wrong.
 """
 from __future__ import annotations
 
-from . import commitment
+from . import commitment, insight
 from .opportunities import Opportunities
 
 
@@ -55,6 +55,18 @@ class Customers:
         path = Opportunities(self._api).hub_path(customer_stem)
         commitment.write(path, value)
         return self.commitment(customer_stem)
+
+    def insight(self, customer_stem: str) -> dict | None:
+        """The Core42 Insight terms for a hub -- `{terms, targets, note}` -- kept in
+        its own `<stem> - Insight.md` note beside the hub, or None when it has none."""
+        return insight.read(Opportunities(self._api).hub_path(customer_stem))
+
+    def set_insight(self, customer_stem: str, value: dict | None) -> dict | None:
+        """Writes the Insight note (None deletes it); the hub itself never changes.
+        Returns what `insight` now reads."""
+        hub = Opportunities(self._api)._hub(customer_stem)
+        insight.write(hub["path"], hub["name"], value)
+        return self.insight(customer_stem)
 
     def subject_enricher(self, subject_kind: str, frontmatter: dict, tags: list[str]) -> dict:
         customer = self.customer_from_tags(tags)
