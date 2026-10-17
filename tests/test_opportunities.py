@@ -67,6 +67,18 @@ class FakeApi:
             "read_note": staticmethod(read_note),
             "read_section": staticmethod(read_section),
         })()
+        self.data = FakeData()
+
+
+class FakeData:
+    def __init__(self):
+        self.files = {}
+
+    def read_text(self, path):
+        return self.files.get(path)
+
+    def write_text(self, path, content):
+        self.files[path] = content
 
 
 def write(path: Path, text: str):
@@ -335,3 +347,93 @@ def test_a_path_past_the_windows_limit_is_written_and_read(service, vault):
 
     assert updated["stage"] == "Qualified"
     assert [o["title"] for o in service.list_for_customer("Contoso Labs")] == [title]
+
+
+# -- create_affiliate --------------------------------------------------------------
+
+CUSTOMER_TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "customer" / "Template.json"
+
+
+def test_create_affiliate_follows_the_customer_template():
+    template = json.loads(CUSTOMER_TEMPLATE.read_text(encoding="utf-8"))
+    root = template["root"]
+
+    assert root["frontmatter_defaults"] == opp.CUSTOMER_DEFAULTS
+    assert [s["name"] for s in root["sections"]] == opp.CUSTOMER_SECTIONS
+    assert template["parent"]["link_back_section"] == f"## {opp.AFFILIATES_SECTION}"
+    assert template["parent"]["child_subpath"] == "Affiliates"
+    assert [(c["suffix"], c["frontmatter_defaults"]["type"], c["frontmatter_defaults"]["tags"], c["display_label"])
+            for c in root["children"]] == [(c["suffix"], c["type"], [c["tag"]], c["label"]) for c in opp.CHILDREN]
+
+
+def test_create_affiliate_writes_the_hub_its_children_the_link_back_and_the_registry_row(service, vault):
+    created = service.create_affiliate("Contoso", "Contoso Retail", aliases=["CR"])
+
+    folder = opportunity_folder(vault, "Contoso", "Affiliates", "Contoso Retail")
+    hub_text = (folder / "Contoso Retail.md").read_text(encoding="utf-8")
+    frontmatter, _ = read_note(folder / "Contoso Retail.md")
+    assert created == {"name": "Contoso Retail", "stem": "Contoso Retail", "tag": "customer/contoso-retail"}
+    assert hub_text == (
+        '---\ntype: "Customer"\naffiliate_of: "Contoso"\nname: "Contoso Retail"\naliases: ["CR"]\n'
+        f'id: "{frontmatter["id"]}"\ntitle: "Contoso Retail"\ncreated: "{TODAY}"\n'
+        'tags: ["kind/customer", "customer/contoso-retail"]\n---\n'
+        "\n## Summary\n\n\n\n## Personal Notes\n\n\n\n## Actions\n\n\n\n## Related\n\n\n\n## Affiliates\n\n\n\n"
+        "## History & Captures\n\n- [[Contoso Retail-history|History]]\n- [[Contoso Retail-captures|Captures]]\n"
+    )
+    assert (folder / "Contoso Retail-history.md").read_text(encoding="utf-8") == (
+        '---\ntype: "History"\nname: "Contoso Retail History"\nparent: "[[Contoso Retail]]"\n'
+        'tags: ["kind/history", "customer/contoso-retail"]\n---\n\n# Contoso Retail\n\n')
+    assert (folder / "Contoso Retail-captures.md").exists()
+    parent_text = opportunity_folder(vault, "Contoso", "Contoso.md").read_text(encoding="utf-8")
+    assert "\n## Affiliates\n\n- [[Contoso Retail]]\n" in parent_text
+    assert "### Contoso Retail\n\n\tCompany Name: Contoso Retail\n\n\tAliases: CR\n\n\tAffiliate of: Contoso\n\n" \
+           "\tCreated: Yes\n" in service._api.data.files["Settings/Entities.md"]
+
+
+def test_a_new_affiliate_lists_at_once_without_a_reindex(service):
+    service.create_affiliate("Contoso", "Contoso Retail")
+
+    contoso = next(c for c in service.customers() if c["stem"] == "Contoso")
+    assert [a["stem"] for a in contoso["affiliates"]] == ["Contoso Labs", "Contoso Retail"]
+    assert service.list_for_customer("Contoso Retail") == []
+    created = service.create("Contoso Retail", "Retail Analytics", {}, [])
+    assert created["affiliate"] == "Contoso Retail" and created["customer"] == "Contoso"
+
+
+def test_create_affiliate_adopts_a_company_discovery_already_registered(service, vault):
+    from backend.registry import EntitiesRegistry
+    EntitiesRegistry(service._api).create_entity("Contoso Retail", "customer", domain="retail.example",
+                                                 aliases="cretail.example")
+
+    service.create_affiliate("Contoso", "Contoso Retail", aliases=["CR"])
+
+    frontmatter, _ = read_note(opportunity_folder(vault, "Contoso", "Affiliates", "Contoso Retail", "Contoso Retail.md"))
+    row = EntitiesRegistry(service._api).find_entity("Contoso Retail")
+    assert frontmatter["domain"] == "retail.example"
+    assert frontmatter["aliases"] == ["cretail.example", "CR"]
+    assert (row["affiliate_of"], row["created"], row["domain"]) == ("Contoso", True, "retail.example")
+    assert row["aliases"] == "cretail.example, CR"
+
+
+def test_create_affiliate_refuses_a_taken_name_or_a_bad_parent(service):
+    from backend.registry import EntitiesRegistry
+    registry = EntitiesRegistry(service._api)
+    registry.create_entity("Gone Co", "customer")
+    registry.delete_entity("Gone Co")
+    registry.create_entity("Partnerish", "partner")
+
+    for parent, name, aliases in [
+        ("Contoso", "Fabrikam", None),          # a top-level Customer
+        ("Contoso", "contoso labs", None),      # an affiliate, any case
+        ("Contoso", "New Co", ["Fabrikam"]),    # an alias that is another hub's name
+        ("Contoso", "Northwind", None),         # a Partner
+        ("Contoso", "Gone Co", None),           # soft-deleted in the registry
+        ("Contoso", "Partnerish", None),        # registered as a partner
+        ("Contoso", "", None),
+        ("Contoso", "..", None),
+        ("Contoso Labs", "Labs Sub", None),     # an affiliate cannot have affiliates
+    ]:
+        with pytest.raises(ValueError):
+            service.create_affiliate(parent, name, aliases)
+    with pytest.raises(OpportunityNotFound):
+        service.create_affiliate("Nobody", "New Co")

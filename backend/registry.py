@@ -143,7 +143,16 @@ class EntitiesRegistry:
         # Soft-deleted rows stay in the file (see delete_entity) but never surface.
         return [_to_public(entry) for entry in self._load() if entry["fields"].get("Deleted", "No") != "Yes"]
 
-    def create_entity(self, name: str, section: str, domain: str = "", aliases: str = "", affiliate_of: str = "") -> dict:
+    def find_entity(self, name: str) -> dict | None:
+        """One row by name, soft-deleted ones included (`deleted` says so):
+        a deleted row still owns its name, so `create_entity` refuses it."""
+        entry = _find(self._load(), name)
+        if entry is None:
+            return None
+        return {**_to_public(entry), "deleted": entry["fields"].get("Deleted", "No") == "Yes"}
+
+    def create_entity(self, name: str, section: str, domain: str = "", aliases: str = "", affiliate_of: str = "",
+                      created: bool = False) -> dict:
         if section not in SECTIONS:
             raise ValueError(f"section must be 'customer' or 'partner', got {section!r}")
         entries = self._load()
@@ -154,7 +163,7 @@ class EntitiesRegistry:
             "heading": name.strip(),
             "fields": {
                 "Company Name": name.strip(), "Aliases": aliases, "Affiliate of": affiliate_of,
-                "Created": "No", "Ignore": "No", "Domain": domain,
+                "Created": "Yes" if created else "No", "Ignore": "No", "Domain": domain,
             },
         }
         entries.append(entry)
@@ -184,6 +193,8 @@ class EntitiesRegistry:
             fields["Domain"] = patch["domain"]
         if "ignore" in patch:
             fields["Ignore"] = "Yes" if patch["ignore"] else "No"
+        if "created" in patch:
+            fields["Created"] = "Yes" if patch["created"] else "No"
         self._save(entries)
         return _to_public(target)
 

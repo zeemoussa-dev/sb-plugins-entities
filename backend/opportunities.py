@@ -19,6 +19,8 @@ import uuid
 from datetime import date
 from pathlib import Path
 
+from .registry import EntitiesRegistry
+
 # The Template's content, kept here because an installed plugin carries its
 # backend but not its `templates/` folder; a test pins these to
 # `templates/opportunity/Template.json` so the two cannot drift.
@@ -44,6 +46,10 @@ CHILDREN = [
     {"suffix": "history", "type": "History", "tag": "kind/history", "label": "History"},
     {"suffix": "captures", "type": "Captures", "tag": "kind/captures", "label": "Captures"},
 ]
+# The `customer` Template, pinned the same way, for `create_affiliate`.
+CUSTOMER_DEFAULTS = {"type": "Customer", "affiliate_of": "", "tags": ["kind/customer"]}
+CUSTOMER_SECTIONS = ["Summary", "Personal Notes", "Actions", "Related", "Affiliates", "History & Captures"]
+AFFILIATES_SECTION = "Affiliates"
 PLAN_SECTION = "Consumption Plan"
 LINK_BACK_SECTION = "Opportunities"
 HISTORY_SECTION = "Log"
@@ -179,6 +185,44 @@ def _with_line_appended(text: str, name: str, line: str) -> str:
     return "\n".join(lines).rstrip("\n") + "\n"
 
 
+def _notes_in_own_folders(folder: Path) -> list[Path]:
+    """`<folder>/<X>/<X>.md` for every subfolder that holds its own note. A
+    `_`-prefixed folder is the vault's archive convention and is skipped."""
+    if not os.path.isdir(_long(folder)):
+        return []
+    paths = []
+    with os.scandir(_long(folder)) as children:
+        for child in children:
+            if not child.is_dir() or child.name.startswith(("_", ".")):
+                continue
+            note = folder / child.name / f"{child.name}.md"
+            if _exists(note):
+                paths.append(note)
+    return sorted(paths, key=lambda p: p.stem.lower())
+
+
+def _link_into_section(hub_path: Path, section: str, wikilink: str) -> None:
+    """`- <wikilink>` added to a hub's section once, as the engine's link-back does."""
+    text = _read_text(hub_path)
+    existing = _section_lines(text, section)
+    if any(wikilink in line for line in existing):
+        return
+    _write_text(hub_path, _with_section(text, section, "\n".join([*existing, f"- {wikilink}"])))
+
+
+def _hub_record(path: Path, frontmatter: dict, tags: list, owner_of: str | None) -> dict:
+    tag = next((t for t in tags if str(t).startswith("customer/")), None)
+    return {
+        "name": _text(frontmatter.get("name")) or path.stem,
+        "stem": path.stem,
+        "tag": tag or f"customer/{_tag_slug(path.stem)}",
+        "path": path,
+        "customer_stem": owner_of,
+        "aliases": [_text(a) for a in frontmatter.get("aliases") or [] if _text(a)]
+        if isinstance(frontmatter.get("aliases"), list) else [],
+    }
+
+
 # -- the Consumption Plan -------------------------------------------------------
 
 
@@ -252,14 +296,18 @@ class Opportunities:
                 owner_of = parts[-4]
             else:
                 continue
-            tag = next((t for t in entry["tags"] if str(t).startswith("customer/")), None)
-            hubs.append({
-                "name": _text(entry["frontmatter"].get("name")) or entry["stem"],
-                "stem": entry["stem"],
-                "tag": tag or f"customer/{_tag_slug(entry['stem'])}",
-                "path": path,
-                "customer_stem": owner_of,
-            })
+            hubs.append(_hub_record(path, entry["frontmatter"], entry["tags"], owner_of))
+        # An affiliate created a moment ago is not in the index until its next
+        # rebuild; it must list at once, as a new opportunity does.
+        indexed = {hub["path"] for hub in hubs}
+        for top in [hub for hub in hubs if hub["customer_stem"] is None]:
+            for path in _notes_in_own_folders(top["path"].parent / "Affiliates"):
+                if path in indexed:
+                    continue
+                frontmatter, _ = self._api.vault.read_note(path)
+                if _text(frontmatter.get("type")) == "Customer":
+                    tags = frontmatter.get("tags") if isinstance(frontmatter.get("tags"), list) else []
+                    hubs.append(_hub_record(path, frontmatter, tags, top["stem"]))
         return hubs
 
     def _hub(self, stem: str, hubs: list[dict] | None = None) -> dict:
@@ -291,6 +339,75 @@ class Opportunities:
             })
         return result
 
+    def create_affiliate(self, customer_stem: str, name: str, aliases: list[str] | None = None) -> dict:
+        """A new affiliate under a top-level Customer, made the way the company
+        Skill makes one: the engine's `create()` from the `customer` Template,
+        then the hub's own `customer/<slug>` tag on it and its two children
+        (that Skill's backfill; the Template has no tag for "your own name"),
+        the link in the parent's `## Affiliates`, and the registry row marked
+        Created so discovery does not make it again."""
+        hubs = self._hubs()
+        parent = self._hub(customer_stem, hubs)
+        if parent["customer_stem"] is not None:
+            raise OpportunityError(f"{parent['name']} is itself an affiliate; affiliates sit under a top-level Customer")
+        name = _text(name)
+        if not name or name != str(name).strip():
+            raise OpportunityError("name is required, on one line")
+        stem = _FILENAME_INVALID.sub("-", name)[:120].strip(" .")
+        if not stem or stem in (".", ".."):
+            raise OpportunityError(f"{name!r} cannot be a file name")
+        wanted_aliases = list(dict.fromkeys(_text(a) for a in (aliases or []) if _text(a)))
+
+        taken = {stem.lower(), name.lower(), *(a.lower() for a in wanted_aliases)}
+        for hub in hubs:
+            if taken & {hub["stem"].lower(), hub["name"].lower(), *(a.lower() for a in hub["aliases"])}:
+                raise OpportunityError(f"{name!r} is already the Customer or affiliate {hub['name']!r}")
+        for entry in self._api.vault.entries():
+            if entry["frontmatter"].get("type") == "Partner" and \
+                    taken & {entry["stem"].lower(), _text(entry["frontmatter"].get("name")).lower()}:
+                raise OpportunityError(f"{name!r} is already the Partner {entry['stem']!r}")
+        registry = EntitiesRegistry(self._api)
+        row = registry.find_entity(name)
+        if row is not None and row["deleted"]:
+            raise OpportunityError(f"{name!r} was deleted from the Entities registry; set its Deleted: No "
+                                   "in Settings/Entities.md first")
+        if row is not None and row["section"] != "customer":
+            raise OpportunityError(f"{name!r} is registered as a {row['section']}")
+        folder = parent["path"].parent / "Affiliates" / stem
+        if _exists(folder):
+            raise OpportunityError(f"{parent['name']} already has an affiliate folder named {stem!r}")
+
+        # A company discovery already registered keeps its domain and aliases.
+        domain = row["domain"] if row else ""
+        registered_aliases = [a.strip() for a in (row["aliases"] if row else "").split(",") if a.strip()]
+        all_aliases = list(dict.fromkeys([*registered_aliases, *wanted_aliases]))
+        tag = f"customer/{_tag_slug(stem)}"
+        frontmatter = {"type": CUSTOMER_DEFAULTS["type"], "affiliate_of": parent["stem"], "name": name}
+        if domain:
+            frontmatter["domain"] = domain
+        if all_aliases:
+            frontmatter["aliases"] = all_aliases
+        frontmatter.update({"id": str(uuid.uuid4()), "title": name, "created": _today(),
+                            "tags": list(dict.fromkeys([*CUSTOMER_DEFAULTS["tags"], tag]))})
+
+        contents = {"History & Captures": "\n".join(f"- [[{stem}-{c['suffix']}|{c['label']}]]" for c in CHILDREN)}
+        body = "\n" + "\n".join(f"## {section}\n\n{contents.get(section, '')}\n" for section in CUSTOMER_SECTIONS)
+        _write_text(folder / f"{stem}.md", _frontmatter_text(frontmatter) + body)
+        for child in CHILDREN:
+            child_frontmatter = {"type": child["type"], "name": f"{name} {child['label']}",
+                                 "parent": f"[[{stem}]]", "tags": [child["tag"], tag]}
+            _write_text(folder / f"{stem}-{child['suffix']}.md",
+                        _frontmatter_text(child_frontmatter) + f"\n# {name}\n\n")
+        _link_into_section(parent["path"], AFFILIATES_SECTION, f"[[{stem}]]")
+
+        if row is None:
+            registry.create_entity(name, "customer", aliases=", ".join(all_aliases),
+                                   affiliate_of=parent["name"], created=True)
+        else:
+            registry.update_entity(row["name"], {"affiliate_of": parent["name"], "created": True,
+                                                 "aliases": ", ".join(all_aliases)})
+        return {"name": name, "stem": stem, "tag": tag}
+
     # -- reading --------------------------------------------------------------
 
     @staticmethod
@@ -298,18 +415,7 @@ class Opportunities:
         """The notes at `<hub folder>/Opportunities/<T>/<T>.md`, read off the
         disk rather than the vault index: the index is rebuilt on its own
         schedule, and an opportunity created a moment ago must already list."""
-        folder = hub["path"].parent / "Opportunities"
-        if not os.path.isdir(_long(folder)):
-            return []
-        paths = []
-        with os.scandir(_long(folder)) as children:
-            for child in children:
-                if not child.is_dir() or child.name.startswith(("_", ".")):
-                    continue
-                note = folder / child.name / f"{child.name}.md"
-                if _exists(note):
-                    paths.append(note)
-        return sorted(paths, key=lambda p: p.stem.lower())
+        return _notes_in_own_folders(hub["path"].parent / "Opportunities")
 
     def _describe(self, path: Path, frontmatter: dict, customer: dict, affiliate: dict | None) -> dict:
         def listed(key):
@@ -518,16 +624,8 @@ class Opportunities:
             }
             _write_text(folder / f"{title}-{child['suffix']}.md",
                         _frontmatter_text(child_frontmatter) + f"\n# {title}\n\n")
-        self._link_into_owner(owner["path"], f"[[{title}]]")
+        _link_into_section(owner["path"], LINK_BACK_SECTION, f"[[{title}]]")
         return self._describe(note, frontmatter, customer, affiliate)
-
-    @staticmethod
-    def _link_into_owner(hub_path: Path, wikilink: str) -> None:
-        text = _read_text(hub_path)
-        existing = _section_lines(text, LINK_BACK_SECTION)
-        if any(wikilink in line for line in existing):
-            return
-        _write_text(hub_path, _with_section(text, LINK_BACK_SECTION, "\n".join([*existing, f"- {wikilink}"])))
 
     def update(self, opportunity_id: str, fields: dict, plan: list[dict] | None = None) -> dict:
         path, frontmatter, customer, affiliate = self._find(opportunity_id)
