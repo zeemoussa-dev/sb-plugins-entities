@@ -128,8 +128,8 @@ def test_a_partner_page_lists_the_opportunities_naming_it_and_its_lineage(accoun
     assert [o["title"] for o in accounts.detail("partner", "Northwind")["opportunities"]] == ["Deal"]
     tiny = accounts.detail("partner", "Tiny")
     assert [h["stem"] for h in tiny["lineage"]] == ["Northwind", "North Labs"]
-    assert accounts.cost("partner", "Tiny") == {"available": False, "row": None}
-    assert api.cost.asked == []
+    assert accounts.cost("partner", "Tiny") == {"available": True, "row": None}
+    assert api.cost.asked == ["Tiny"]
 
 
 def test_no_cost_service_means_no_cost_panel(vault):
@@ -212,6 +212,9 @@ def test_the_http_surface(api, vault):
     assert {row["stem"] for row in client.get(base).json()["customers"]} == {"Contoso", "Contoso Labs"}
     assert client.get(f"{base}/customer/Contoso%20Labs").json()["lineage"] == [{"name": "Contoso", "stem": "Contoso"}]
     assert client.get(f"{base}/customer/Nobody").status_code == 404
+    assert client.post(f"{base}/customer", json={"name": "Alef Education", "aliases": ["Alef"]}).json()["stem"] \
+        == "Alef Education"
+    assert client.post(f"{base}/customer", json={"name": "Alef Education"}).status_code == 400
     assert client.get(f"{base}/customer/Contoso/cost").json()["row"]["id"] == "contoso"
     stale = client.put(f"{base}/customer/Contoso/personal-notes", json={"text": "x", "previous": "old"})
     assert stale.status_code == 409

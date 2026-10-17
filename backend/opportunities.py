@@ -238,12 +238,13 @@ def _link_into_section(hub_path: Path, section: str, wikilink: str) -> None:
     _write_text(hub_path, _with_section(text, section, "\n".join([*existing, f"- {wikilink}"])))
 
 
-def _hub_record(path: Path, frontmatter: dict, tags: list, owner_of: str | None) -> dict:
-    tag = next((t for t in tags if str(t).startswith("customer/")), None)
+def _hub_record(path: Path, frontmatter: dict, tags: list, owner_of: str | None, kind: str = "customer") -> dict:
+    tag = next((t for t in tags if str(t).startswith(f"{kind}/")), None)
     return {
+        "kind": kind,
         "name": _text(frontmatter.get("name")) or path.stem,
         "stem": path.stem,
-        "tag": tag or f"customer/{_tag_slug(path.stem)}",
+        "tag": tag or f"{kind}/{_tag_slug(path.stem)}",
         "path": path,
         "customer_stem": owner_of,
         "aliases": [_text(a) for a in frontmatter.get("aliases") or [] if _text(a)]
@@ -306,36 +307,35 @@ class Opportunities:
 
     # -- hubs -----------------------------------------------------------------
 
-    def _hubs(self) -> list[dict]:
-        """Every Customer hub, a top-level one at `Work/Customers/<C>/<C>.md` and
-        an affiliate at `Work/Customers/<C>/Affiliates/<A>/<A>.md`. Found by where
-        the note sits, the layout the Template's `parent` describes."""
-        hubs = []
+    def _work_folder(self) -> Path | None:
         for entry in self._api.vault.entries():
-            if entry["frontmatter"].get("type") != "Customer":
-                continue
-            path = Path(entry["path"])
-            parts = path.parts
-            if path.parent.name != entry["stem"] or len(parts) < 4:
-                continue
-            if parts[-3] == "Customers" and parts[-4] == "Work":
-                owner_of = None
-            elif len(parts) >= 6 and parts[-3] == "Affiliates" and parts[-5] == "Customers" and parts[-6] == "Work":
-                owner_of = parts[-4]
-            else:
-                continue
-            hubs.append(_hub_record(path, entry["frontmatter"], entry["tags"], owner_of))
-        # An affiliate created a moment ago is not in the index until its next
-        # rebuild; it must list at once, as a new opportunity does.
-        indexed = {hub["path"] for hub in hubs}
-        for top in [hub for hub in hubs if hub["customer_stem"] is None]:
-            for path in _notes_in_own_folders(top["path"].parent / "Affiliates"):
-                if path in indexed:
-                    continue
+            parts = Path(entry["path"]).parts
+            if "Work" in parts:
+                return Path(*parts[:parts.index("Work") + 1])
+        return None
+
+    def _hubs(self) -> list[dict]:
+        """Every Customer and Partner hub: a top-level one at `Work/<Kind>/<H>/<H>.md`
+        and its affiliates at `<H>/Affiliates/<A>/<A>.md`, as deep as they nest (a
+        Partner's affiliate has its own). Read off the disk, not the index: a hub
+        made a moment ago must list at once, as a new opportunity does.
+        `customer_stem` is the hub's immediate parent, None at the top."""
+        work = self._work_folder()
+        if work is None:
+            return []
+        hubs: list[dict] = []
+
+        def walk(folder: Path, kind: str, note_type: str, parent: str | None) -> None:
+            for path in _notes_in_own_folders(folder):
                 frontmatter, _ = self._api.vault.read_note(path)
-                if _text(frontmatter.get("type")) == "Customer":
-                    tags = frontmatter.get("tags") if isinstance(frontmatter.get("tags"), list) else []
-                    hubs.append(_hub_record(path, frontmatter, tags, top["stem"]))
+                if _text(frontmatter.get("type")) != note_type:
+                    continue
+                tags = frontmatter.get("tags") if isinstance(frontmatter.get("tags"), list) else []
+                hubs.append(_hub_record(path, frontmatter, tags, parent, kind))
+                walk(path.parent / "Affiliates", kind, note_type, path.stem)
+
+        walk(work / "Customers", "customer", "Customer", None)
+        walk(work / "Partners", "partner", "Partner", None)
         return hubs
 
     def _hub(self, stem: str, hubs: list[dict] | None = None) -> dict:
@@ -353,24 +353,49 @@ class Opportunities:
         return self._hub(stem)["path"]
 
     @staticmethod
+    def _children(hub: dict, hubs: list[dict]) -> list[dict]:
+        return sorted((h for h in hubs if h["kind"] == hub["kind"] and h["customer_stem"] == hub["stem"]),
+                      key=lambda h: h["name"].lower())
+
+    @staticmethod
     def _customer_of(hub: dict, hubs: list[dict]) -> dict | None:
-        """The top-level Customer a hub belongs to: itself, or the hub of the
-        folder an affiliate sits in -- None when that folder has no hub note."""
-        if hub["customer_stem"] is None:
-            return hub
-        return next((h for h in hubs if h["customer_stem"] is None and h["stem"] == hub["customer_stem"]), None)
+        """The top-level hub a hub belongs to: itself, or the hub above it, up to
+        the top -- None when a folder on the way has no hub note."""
+        while hub is not None and hub["customer_stem"] is not None:
+            hub = next((h for h in hubs if h["kind"] == hub["kind"] and h["stem"] == hub["customer_stem"]), None)
+        return hub
+
+    def _descendants(self, hub: dict, hubs: list[dict]) -> list[dict]:
+        found = []
+        for child in self._children(hub, hubs):
+            found += [child, *self._descendants(child, hubs)]
+        return found
 
     def customers(self) -> list[dict]:
+        """Top-level Customer hubs, each with its direct affiliates."""
         hubs = self._hubs()
         result = []
-        for top in sorted((h for h in hubs if h["customer_stem"] is None), key=lambda h: h["name"].lower()):
-            affiliates = sorted((h for h in hubs if h["customer_stem"] == top["stem"]),
-                                key=lambda h: h["name"].lower())
+        for top in sorted((h for h in hubs if h["kind"] == "customer" and h["customer_stem"] is None),
+                          key=lambda h: h["name"].lower()):
             result.append({
                 "name": top["name"], "stem": top["stem"], "tag": top["tag"],
-                "affiliates": [{"name": a["name"], "stem": a["stem"], "tag": a["tag"]} for a in affiliates],
+                "affiliates": [{"name": a["name"], "stem": a["stem"], "tag": a["tag"]}
+                               for a in self._children(top, hubs)],
             })
         return result
+
+    def hubs(self) -> list[dict]:
+        """Every top-level Customer and Partner hub, each with `kind` and its
+        affiliates nested as deep as they go. A stem found under both kinds is
+        refused by every stem-taking method as ambiguous, never guessed."""
+        all_hubs = self._hubs()
+
+        def shaped(hub: dict) -> dict:
+            return {"kind": hub["kind"], "name": hub["name"], "stem": hub["stem"], "tag": hub["tag"],
+                    "affiliates": [shaped(child) for child in self._children(hub, all_hubs)]}
+
+        tops = [h for h in all_hubs if h["customer_stem"] is None]
+        return [shaped(top) for top in sorted(tops, key=lambda h: (h["kind"], h["name"].lower()))]
 
     def create_affiliate(self, customer_stem: str, name: str, aliases: list[str] | None = None) -> dict:
         """A new affiliate under a top-level Customer, made the way the company
@@ -381,8 +406,24 @@ class Opportunities:
         Created so discovery does not make it again."""
         hubs = self._hubs()
         parent = self._hub(customer_stem, hubs)
+        if parent["kind"] != "customer":
+            raise OpportunityError(f"{parent['name']} is a Partner; customer affiliates sit under a Customer")
         if parent["customer_stem"] is not None:
             raise OpportunityError(f"{parent['name']} is itself an affiliate; affiliates sit under a top-level Customer")
+        return self._new_customer_hub(hubs, name, aliases, parent)
+
+    def create_customer(self, name: str, aliases: list[str] | None = None) -> dict:
+        """A new top-level Customer hub at `Work/Customers/<Name>/<Name>.md`, made
+        as `create_affiliate` makes one, without a parent: so a Customer exists at
+        once instead of waiting for discovery and the company Skill."""
+        hubs = self._hubs()
+        work = self._work_folder()
+        if work is None:
+            raise OpportunityError("no vault notes are indexed yet, so the Customers folder cannot be found")
+        return self._new_customer_hub(hubs, name, aliases, None, customers_folder=work / "Customers")
+
+    def _new_customer_hub(self, hubs: list[dict], name: str, aliases: list[str] | None, parent: dict | None,
+                          customers_folder: Path | None = None) -> dict:
         name = _text(name)
         if not name or name != str(name).strip():
             raise OpportunityError("name is required, on one line")
@@ -406,16 +447,17 @@ class Opportunities:
                                    "in Settings/Entities.md first")
         if row is not None and row["section"] != "customer":
             raise OpportunityError(f"{name!r} is registered as a {row['section']}")
-        folder = parent["path"].parent / "Affiliates" / stem
+        folder = parent["path"].parent / "Affiliates" / stem if parent else customers_folder / stem
         if _exists(folder):
-            raise OpportunityError(f"{parent['name']} already has an affiliate folder named {stem!r}")
+            raise OpportunityError(f"{parent['name']} already has an affiliate folder named {stem!r}" if parent
+                                   else f"a Customer folder named {stem!r} already exists")
 
         # A company discovery already registered keeps its domain and aliases.
         domain = row["domain"] if row else ""
         registered_aliases = [a.strip() for a in (row["aliases"] if row else "").split(",") if a.strip()]
         all_aliases = list(dict.fromkeys([*registered_aliases, *wanted_aliases]))
         tag = f"customer/{_tag_slug(stem)}"
-        frontmatter = {"type": CUSTOMER_DEFAULTS["type"], "affiliate_of": parent["stem"], "name": name}
+        frontmatter = {"type": CUSTOMER_DEFAULTS["type"], "affiliate_of": parent["stem"] if parent else "", "name": name}
         if domain:
             frontmatter["domain"] = domain
         if all_aliases:
@@ -431,13 +473,15 @@ class Opportunities:
                                  "parent": f"[[{stem}]]", "tags": [child["tag"], tag]}
             _write_text(folder / f"{stem}-{child['suffix']}.md",
                         _frontmatter_text(child_frontmatter) + f"\n# {name}\n\n")
-        _link_into_section(parent["path"], AFFILIATES_SECTION, f"[[{stem}]]")
+        if parent:
+            _link_into_section(parent["path"], AFFILIATES_SECTION, f"[[{stem}]]")
 
+        affiliate_of = parent["name"] if parent else ""
         if row is None:
             registry.create_entity(name, "customer", aliases=", ".join(all_aliases),
-                                   affiliate_of=parent["name"], created=True)
+                                   affiliate_of=affiliate_of, created=True)
         else:
-            registry.update_entity(row["name"], {"affiliate_of": parent["name"], "created": True,
+            registry.update_entity(row["name"], {"affiliate_of": affiliate_of, "created": True,
                                                  "aliases": ", ".join(all_aliases)})
         return {"name": name, "stem": stem, "tag": tag}
 
@@ -477,9 +521,7 @@ class Opportunities:
     def _owners_of(self, customer: dict, hubs: list[dict], include_affiliates: bool) -> list[tuple[dict, dict | None]]:
         owners = [(customer, None)]
         if include_affiliates:
-            for hub in sorted((h for h in hubs if h["customer_stem"] == customer["stem"]),
-                              key=lambda h: h["name"].lower()):
-                owners.append((customer, hub))
+            owners += [(customer, hub) for hub in self._descendants(customer, hubs)]
         return owners
 
     def list_for_customer(self, customer_stem: str, include_affiliates: bool = True) -> list[dict]:
@@ -490,6 +532,8 @@ class Opportunities:
             if customer is None:
                 raise OpportunityNotFound(f"{customer_stem!r} sits in a Customer folder with no hub note")
             owners = [(customer, hub)]
+            if include_affiliates:
+                owners += [(customer, below) for below in self._descendants(hub, hubs)]
         else:
             owners = self._owners_of(hub, hubs, include_affiliates)
         result = []

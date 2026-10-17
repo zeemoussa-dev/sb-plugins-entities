@@ -37,6 +37,11 @@ class CaptureBody(BaseModel):
     text: str
 
 
+class NewCustomerBody(BaseModel):
+    name: str
+    aliases: list[str] = []
+
+
 def _account_call(call):
     try:
         return call()
@@ -54,6 +59,10 @@ def build_router(registry: EntitiesRegistry, accounts: Accounts) -> APIRouter:
     @router.get("/accounts")
     def list_accounts() -> dict:
         return accounts.list()
+
+    @router.post("/accounts/customer")
+    def post_customer(body: NewCustomerBody) -> dict:
+        return _account_call(lambda: accounts.create_customer(body.name, body.aliases))
 
     @router.get("/accounts/{kind}/{stem}")
     def get_account(kind: str, stem: str) -> dict:

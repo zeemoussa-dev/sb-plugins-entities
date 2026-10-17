@@ -198,17 +198,17 @@ class Accounts:
     # -- one hub ----------------------------------------------------------------
 
     def _opportunities(self, hub: dict) -> list[dict]:
+        """A hub's own pipeline; a Partner's also holds every Customer opportunity naming it."""
         service = Opportunities(self._api)
         try:
-            if hub["kind"] == "customer":
-                return service.list_for_customer(hub["stem"])
-            found = []
-            for customer in service.customers():
-                found += [o for o in service.list_for_customer(customer["stem"]) if hub["stem"] in o["partner"]]
+            found = service.list_for_customer(hub["stem"])
+            if hub["kind"] == "partner":
+                for customer in service.customers():
+                    found += [o for o in service.list_for_customer(customer["stem"]) if hub["stem"] in o["partner"]]
             return found
         except OpportunityError:
-            # A hub `entities.opportunities` does not reach (an affiliate of an
-            # affiliate) has no pipeline to show, which is not this page's failure.
+            # A hub the service cannot place (its parent folder has no hub note)
+            # has no pipeline to show, which is not this page's failure.
             return []
 
     def _activity(self, hub: dict) -> list[dict]:
@@ -256,8 +256,6 @@ class Accounts:
         from `detail`: the service computes the customer's burn (seconds, on a real
         install) and the rest of the page should not wait for it."""
         hub, _ = self._hub(kind, stem)
-        if hub["kind"] != "customer":
-            return {"available": False, "row": None}
         service = self._api.get_service(COST_SERVICE)
         if service is None or not hasattr(service, "for_entity"):
             return {"available": False, "row": None}
@@ -286,7 +284,8 @@ class Accounts:
             "tags": _listed(frontmatter.get("tags")),
             "lineage": lineage,
             "affiliates": [{"name": h["name"], "stem": h["stem"]} for h in hubs if h["parent"] == hub["stem"]],
-            "commitment": commitment.from_frontmatter(frontmatter) if kind == "customer" else None,
+            # A Partner's hub may carry one too, when Azure Cost Manager links a customer to it.
+            "commitment": commitment.from_frontmatter(frontmatter),
             "intro": intro,
             "sections": sections,
             "personal_notes": next((s["text"] for s in sections if s["name"] == PERSONAL_NOTES), ""),
@@ -298,6 +297,9 @@ class Accounts:
         }
 
     # -- writing ----------------------------------------------------------------
+
+    def create_customer(self, name: str, aliases: list[str] | None = None) -> dict:
+        return Opportunities(self._api).create_customer(name, aliases)
 
     @staticmethod
     def _replace_section(path: Path, name: str, text: str, previous: str, *, before: str | None = None) -> None:
