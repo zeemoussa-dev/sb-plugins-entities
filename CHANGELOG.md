@@ -5,6 +5,14 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: Customers & Partners screens (1.4.0, Plugin API 11). `/entities` lists every Customer and Partner hub,
+  affiliates nested under their parent at any depth, with search. `/entities/<kind>/<stem>` shows one hub: its fields,
+  signed commitment, Azure consumption (from Cost Manager's `azure-cost-manager.portfolio` service when installed),
+  its sections and News, Opportunities (a Partner's are those naming it), People, and Meetings/Threads carrying its
+  tag. Editable: the hub's `## Personal Notes` and its Captures note's `## Notes`, plus "add a capture" (a dated line
+  under `## Notes`). A save carrying text that no longer matches the note is refused (409), never overwritten.
+  Backend: `backend/accounts.py`, routes under `/plugins/entities/accounts`.
+
 - feat: a Customer's signed Azure commitment on its hub note (1.3.0, Plugin API 11). `entities.customers` gains
   `commitment(customer_stem) -> dict | None` and `set_commitment(customer_stem, commitment | None) -> dict | None`,
   for a Customer or an affiliate. The commitment is flat frontmatter -- `macc_type`, `macc_amount`, `macc_currency`,

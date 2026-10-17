@@ -13,7 +13,8 @@ CFO's, say) has none.
 | `backend/opportunities.py` | the `entities.opportunities` service: a Customer's pipeline (its Opportunity notes and its affiliates'), listed, created and edited for another plugin |
 | `backend/matching.py` | Cockpit Expert matching by Customer: the `<slug>-expert` in the Customer Section, else that Section's fallback agent |
 | `templates/` | the `customer`, `partner` and `opportunity` Templates |
-| `ui/` | the Entities settings page (Settings → Plugins → Entities) and the Customer row in the Email Cockpit |
+| `backend/accounts.py` | the Customers & Partners screens' data, under `/plugins/entities/accounts`: every hub, one hub's data, and writes to its Personal Notes and Captures |
+| `ui/` | **Customers & Partners** (`/entities`, a sidebar entry, and `/entities/<kind>/<stem>` per hub), the Entities settings page (Settings → Plugins → Entities), and the Customer row in the Email Cockpit |
 | `tests/` | the plugin's own tests; run on publish, never packaged |
 
 It also tells the framework where People are filed (`Work/Customers`,

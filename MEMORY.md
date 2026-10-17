@@ -76,5 +76,19 @@ raised in the framework.
   no section, and bumping would refuse every Skill pinned to the old number. An
   existing install needs nothing: the service writes the keys, and the installed
   Template's copy only lacks their documentation.
+- **[2026-10-17] The Customers & Partners page writes two sections only:** the hub's
+  `## Personal Notes` and its Captures note's `## Notes` (operator's decision). Every
+  other section is Hermes' and is shown read-only; `## Captured` stays the pipeline's.
+  A replace carries the text the page loaded and is refused (409) when the note no
+  longer holds it -- the operator edits the same notes in Obsidian.
+- **[2026-10-17] "Adding a note" to a Customer/Partner is a capture, not a new note
+  kind** (operator's decision): a dated `- YYYY-MM-DD: text` under the Captures
+  note's `## Notes`.
+- **[2026-10-17] Another plugin's data reaches the hub page only through its service**
+  (`azure-cost-manager.portfolio.for_entity(stem)`), asked at call time; absent or
+  failing reads as no panel, never a failed page.
+- **[2026-10-17] Partner affiliates nest deeper than one level** (`<P>/Affiliates/<A>/Affiliates/<B>`);
+  `accounts.py` walks them recursively off disk. `entities.opportunities` still knows
+  one level of Customer affiliates only.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.
