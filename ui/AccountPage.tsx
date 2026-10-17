@@ -84,7 +84,6 @@ function EditableSection({ title, text, emptyText, onSave }: {
 function CostPanel({ account }: { account: Account }) {
   const [cost, setCost] = useState<AccountCost | null>(null);
   useEffect(() => {
-    if (account.kind !== 'customer') return;
     let current = true;
     fetchAccountCost(account.kind, account.stem)
       .then((answer) => { if (current) setCost(answer); })
@@ -92,9 +91,11 @@ function CostPanel({ account }: { account: Account }) {
     return () => { current = false; };
   }, [account.kind, account.stem]);
 
-  if (account.kind !== 'customer') return null;
-  if (!cost) return <section className="card"><p className="text-muted">Loading Azure consumption…</p></section>;
+  // Most Partners are never linked, so "not linked" is only worth saying on a Customer.
+  const quietWhenUnlinked = account.kind === 'partner';
+  if (!cost) return quietWhenUnlinked ? null : <section className="card"><p className="text-muted">Loading Azure consumption…</p></section>;
   if (!cost.available) return null;
+  if (quietWhenUnlinked && !cost.row && !cost.error) return null;
   const row: CostRow | null = cost.row;
   return (
     <section className="card">
@@ -163,7 +164,7 @@ function Overview({ account }: { account: Account }) {
           <div className="markdown-body"><NoteText text={account.news} /></div>
         </section>
       )}
-      {!commitment && account.kind !== 'customer' && !account.intro && sections.length === 0 && !account.news && (
+      {!commitment && !account.intro && sections.length === 0 && !account.news && (
         <p className="text-muted">This note has nothing written in it yet.</p>
       )}
     </>
