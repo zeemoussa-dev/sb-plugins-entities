@@ -34,6 +34,8 @@ Asked for at call time with `api.get_service("entities.opportunities")`:
 | Method | Returns |
 |---|---|
 | `customers()` | `[{name, stem, tag, affiliates: [{name, stem, tag}]}]`, every top-level Customer hub |
+| `hubs()` | `[{kind, name, stem, tag, affiliates: [...]}]`, every top-level Customer **and Partner** hub, `kind` being `customer` or `partner`, affiliates nested as deep as they go (1.5.0) |
+| `create_customer(name, aliases=None)` | `{name, stem, tag}` of a new top-level Customer hub, made as `create_affiliate` makes one but without a parent (1.5.0); also `POST /plugins/entities/accounts/customer` `{name, aliases}` |
 | `create_affiliate(customer_stem, name, aliases=None)` | `{name, stem, tag}` of the new affiliate hub under a top-level Customer: hub note from the `customer` Template, its History/Captures, the parent's `## Affiliates` link, and the registry row (an existing discovered row is adopted, its domain kept) |
 | `list_for_customer(customer_stem, include_affiliates=True)` | `[opportunity]`, the Customer's own first, then each affiliate's |
 | `create(owner_stem, title, fields, plan)` | the new `opportunity`; `owner_stem` is a Customer's or an affiliate's hub |

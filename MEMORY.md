@@ -87,8 +87,17 @@ raised in the framework.
 - **[2026-10-17] Another plugin's data reaches the hub page only through its service**
   (`azure-cost-manager.portfolio.for_entity(stem)`), asked at call time; absent or
   failing reads as no panel, never a failed page.
-- **[2026-10-17] Partner affiliates nest deeper than one level** (`<P>/Affiliates/<A>/Affiliates/<B>`);
-  `accounts.py` walks them recursively off disk. `entities.opportunities` still knows
-  one level of Customer affiliates only.
+- **[2026-10-17] Affiliates nest deeper than one level** (`<P>/Affiliates/<A>/Affiliates/<B>`,
+  seen on Partners). Hubs are found by walking `Work/Customers` and `Work/Partners`
+  recursively off disk, never by a fixed path depth.
+- **[2026-10-18] A stem-taking service method accepts a Customer or a Partner hub**
+  (operator: Azure Cost Manager links to Partner notes too). `customers()` stays
+  Customers only so its callers see no change; `hubs()` carries `kind`. A stem found
+  under both kinds is refused as ambiguous, never guessed.
+- **[2026-10-18] Never store a nested YAML block in a hub's frontmatter.** The
+  framework's parser and the shared Hermes engine read frontmatter line by line and
+  rewrite all of it from what they parsed, so a list of maps reads as "" and is wiped
+  by the next Skill write to that note. One key per line, scalars or flow lists of
+  strings -- as `macc_*`.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.

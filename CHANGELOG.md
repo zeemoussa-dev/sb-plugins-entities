@@ -5,6 +5,16 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: Partner hubs alongside Customer hubs (1.5.0), so an Azure Cost Manager customer may link to a Partner note.
+  `entities.opportunities.hubs()` lists every top-level Customer and Partner hub with `kind`, affiliates nested at any
+  depth; `customers()` is unchanged (Customers only). Every stem-taking method -- `entities.customers.commitment` /
+  `set_commitment`, `list_for_customer`, `create` -- now accepts a Partner's or a partner affiliate's stem, and a stem
+  found under both kinds is refused as ambiguous. `list_for_customer` takes in affiliates at every depth. The
+  Customers & Partners page shows a Partner's commitment and, when linked, its Azure consumption.
+- feat: `entities.opportunities.create_customer(name, aliases=None)` and `POST /plugins/entities/accounts/customer`
+  (1.5.0): a top-level Customer hub made at once -- the note, its History and Captures, its own tag, the registry
+  row marked Created -- instead of a registry row waiting for discovery and the company Skill.
+
 - feat: Customers & Partners screens (1.4.0, Plugin API 11). `/entities` lists every Customer and Partner hub,
   affiliates nested under their parent at any depth, with search. `/entities/<kind>/<stem>` shows one hub: its fields,
   signed commitment, Azure consumption (from Cost Manager's `azure-cost-manager.portfolio` service when installed),
