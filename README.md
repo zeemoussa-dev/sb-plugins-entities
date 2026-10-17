@@ -8,7 +8,8 @@ CFO's, say) has none.
 |---|---|
 | `plugin.json` | id `entities`, version, the framework API it is built for |
 | `backend/registry.py` | the Entities discovery registry, `Settings/Entities.md`, served under `/plugins/entities/entities` |
-| `backend/customers.py` | the `entities.customers` service (customer resolution, and a Customer's signed Azure commitment: `commitment(customer_stem)` / `set_commitment(customer_stem, commitment or None)`) and Cockpit's customer enricher |
+| `backend/customers.py` | the `entities.customers` service (customer resolution, and a Customer's signed Azure commitment: `commitment(customer_stem)` / `set_commitment(customer_stem, commitment or None)`; Core42 Insight's terms: `insight(stem)` / `set_insight(stem, value or None)`) and Cockpit's customer enricher |
+| `backend/insight.py` | the Insight terms' own note beside a hub, `<stem> - Insight.md`: flat frontmatter, a json block under `## Data`, a readable table; never on the hub, whose frontmatter Hermes rewrites line by line |
 | `backend/commitment.py` | the commitment's flat `macc_*` frontmatter on a hub note: validate, read, write |
 | `backend/opportunities.py` | the `entities.opportunities` service: a Customer's pipeline (its Opportunity notes and its affiliates'), listed, created and edited for another plugin |
 | `backend/matching.py` | Cockpit Expert matching by Customer: the `<slug>-expert` in the Customer Section, else that Section's fallback agent |

@@ -5,6 +5,14 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: `entities.customers.insight(stem)` / `set_insight(stem, value | None)` (1.6.0), for the Core42 Insight
+  plugin: `{terms: [{model, start, end?, percent?, amount?, include_marketplace?, subtract_credits?, ...}],
+  targets: {"YYYY": amount}, note}`, or None. Kept in a note of its own beside the hub,
+  `<stem> - Insight.md` -- flat frontmatter, the data as one fenced json block under `## Data`, and a readable
+  table regenerated on every save. The hub is never touched; None deletes the note. Shape is checked here
+  (dates, numbers, a `model` and `start` per term; unknown keys and models kept), meaning in Insight. A hand-broken
+  json block is reported, never read as empty.
+
 - feat: Partner hubs alongside Customer hubs (1.5.0), so an Azure Cost Manager customer may link to a Partner note.
   `entities.opportunities.hubs()` lists every top-level Customer and Partner hub with `kind`, affiliates nested at any
   depth; `customers()` is unchanged (Customers only). Every stem-taking method -- `entities.customers.commitment` /

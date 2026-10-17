@@ -99,5 +99,11 @@ raised in the framework.
   rewrite all of it from what they parsed, so a list of maps reads as "" and is wiped
   by the next Skill write to that note. One key per line, scalars or flow lists of
   strings -- as `macc_*`.
+- **[2026-10-18] Structured data another plugin keeps about a hub goes in its own
+  note beside it** (operator, for Core42 Insight): `<stem> - Insight.md`, flat
+  frontmatter, the data as one fenced json block under `## Data`. No Skill writes it
+  and nothing re-serialises a body, so it survives; the hub stays untouched. A json
+  block that does not parse is an error, never "no data" -- or the next save would
+  overwrite a hand edit.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.
