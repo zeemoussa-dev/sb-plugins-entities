@@ -32,6 +32,7 @@ Asked for at call time with `api.get_service("entities.opportunities")`:
 | Method | Returns |
 |---|---|
 | `customers()` | `[{name, stem, tag, affiliates: [{name, stem, tag}]}]`, every top-level Customer hub |
+| `create_affiliate(customer_stem, name, aliases=None)` | `{name, stem, tag}` of the new affiliate hub under a top-level Customer: hub note from the `customer` Template, its History/Captures, the parent's `## Affiliates` link, and the registry row (an existing discovered row is adopted, its domain kept) |
 | `list_for_customer(customer_stem, include_affiliates=True)` | `[opportunity]`, the Customer's own first, then each affiliate's |
 | `create(owner_stem, title, fields, plan)` | the new `opportunity`; `owner_stem` is a Customer's or an affiliate's hub |
 | `update(opportunity_id, fields, plan=None)` | the `opportunity` as it now stands; `plan` given replaces the Consumption Plan |

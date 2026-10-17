@@ -5,6 +5,15 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: `entities.opportunities.create_affiliate(customer_stem, name, aliases=None)` (1.2.0) -- a new affiliate under
+  a top-level Customer, made the way the company Skill makes one: the hub note at
+  `Work/Customers/<Parent>/Affiliates/<Name>/<Name>.md` from the `customer` Template, its own `customer/<slug>` tag on it
+  and on its History and Captures children, the link in the parent's `## Affiliates`, and the `Settings/Entities.md` row
+  with `Affiliate of` and `Created: Yes`. A row discovery already registered is adopted, keeping its domain and aliases.
+  Refuses (`ValueError`) a name already taken by a Customer, affiliate, alias or Partner, a soft-deleted or partner
+  registry row, and an unknown or affiliate parent. `customers()` now also finds an affiliate on disk, so a new one
+  lists before the next reindex. The registry gains `find_entity` and a `created` flag on create and update.
+
 - feat: the `entities.opportunities` service (1.1.0, Plugin API 9) -- a Customer's sales pipeline as its Opportunity
   notes, its affiliates' included, for another plugin to list, create and edit without writing those notes itself
   (the Azure Cost Manager's Pipeline first). `customers()`, `list_for_customer(customer_stem, include_affiliates=True)`,

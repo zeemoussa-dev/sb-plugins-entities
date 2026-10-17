@@ -60,5 +60,12 @@ raised in the framework.
 - **[2026-10-16] Opportunity notes are found on disk under their hub**
   (`<hub>/Opportunities/<T>/<T>.md`), not in the vault index: the index is rebuilt
   on its own schedule, and an opportunity created a moment ago must list at once.
+- **[2026-10-17] An affiliate made from code matches what the company Skill makes**
+  (`create-companies-partners`, in the install's repository): the engine's
+  `create()` from the `customer` Template plus that Skill's backfill -- the hub's
+  own `customer/<slug>` tag on the hub and on both children, which the Template
+  cannot express -- and the registry row set `Created: Yes`, or discovery makes the
+  hub again. A row already discovered for that name is adopted, never duplicated.
+  Affiliates nest one level under a top-level Customer here.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.
