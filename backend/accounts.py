@@ -250,9 +250,12 @@ class Accounts:
         _, body = self._api.vault.read_note(path)
         return body.strip() or None
 
-    def _cost(self, hub: dict) -> dict:
+    def cost(self, kind: str, stem: str) -> dict:
         """What Azure Cost Manager knows of this customer, through its service. Not
-        installed, too old, or failing all read as "nothing to show"."""
+        installed, too old, or failing all read as "nothing to show". Asked apart
+        from `detail`: the service computes the customer's burn (seconds, on a real
+        install) and the rest of the page should not wait for it."""
+        hub, _ = self._hub(kind, stem)
         if hub["kind"] != "customer":
             return {"available": False, "row": None}
         service = self._api.get_service(COST_SERVICE)
@@ -292,7 +295,6 @@ class Accounts:
             "opportunities": self._opportunities(hub),
             "people": self._people_by_hub([hub])[hub["stem"]],
             "activity": self._activity(hub),
-            "cost": self._cost(hub),
         }
 
     # -- writing ----------------------------------------------------------------

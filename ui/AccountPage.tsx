@@ -4,8 +4,8 @@ import { Breadcrumbs } from '../../pluginHost/breadcrumbs';
 import { NoteText } from '../../pluginHost/noteText';
 import { useUrlState } from '../../pluginHost/state';
 import {
-  accountLink, addCapture, errorText, fetchAccount, saveCaptureNotes, savePersonalNotes,
-  type Account, type AccountKind, type CostRow,
+  accountLink, addCapture, errorText, fetchAccount, fetchAccountCost, saveCaptureNotes, savePersonalNotes,
+  type Account, type AccountCost, type AccountKind, type CostRow,
 } from './accountsClient';
 
 const TABS = ['overview', 'notes', 'opportunities', 'people', 'activity'] as const;
@@ -60,7 +60,7 @@ function EditableSection({ title, text, emptyText, onSave }: {
   return (
     <section className="card entities-account-section">
       <div className="entities-account-section-head">
-        <h2 className="section-title">{title}</h2>
+        <h2 className="entities-card-title">{title}</h2>
         {draft === null && <button type="button" className="btn" onClick={() => setDraft(text)}>Edit</button>}
       </div>
       {draft === null ? (
@@ -80,13 +80,26 @@ function EditableSection({ title, text, emptyText, onSave }: {
   );
 }
 
-function CostPanel({ cost }: { cost: Account['cost'] }) {
+/** Loaded on its own: Cost Manager computes the burn on asking, and the page should not wait for it. */
+function CostPanel({ account }: { account: Account }) {
+  const [cost, setCost] = useState<AccountCost | null>(null);
+  useEffect(() => {
+    if (account.kind !== 'customer') return;
+    let current = true;
+    fetchAccountCost(account.kind, account.stem)
+      .then((answer) => { if (current) setCost(answer); })
+      .catch((caught) => { if (current) setCost({ available: true, row: null, error: errorText(caught) }); });
+    return () => { current = false; };
+  }, [account.kind, account.stem]);
+
+  if (account.kind !== 'customer') return null;
+  if (!cost) return <section className="card"><p className="text-muted">Loading Azure consumption…</p></section>;
   if (!cost.available) return null;
   const row: CostRow | null = cost.row;
   return (
     <section className="card">
       <div className="entities-account-section-head">
-        <h2 className="section-title">Azure consumption</h2>
+        <h2 className="entities-card-title">Azure consumption</h2>
         {row?.route && <Link className="btn" to={row.route}>Open in Azure Cost</Link>}
       </div>
       {cost.error && <p className="entities-error">Azure Cost Manager could not answer: {cost.error}</p>}
@@ -126,7 +139,7 @@ function Overview({ account }: { account: Account }) {
     <>
       {commitment && (
         <section className="card">
-          <h2 className="section-title">Signed commitment</h2>
+          <h2 className="entities-card-title">Signed commitment</h2>
           <div className="entities-tiles">
             <div><span className="text-muted">{commitment.type || 'Commitment'}</span><strong>{money(commitment.amount, commitment.currency)}</strong></div>
             <div><span className="text-muted">Term</span><strong>{commitment.start} → {commitment.end}</strong></div>
@@ -136,21 +149,21 @@ function Overview({ account }: { account: Account }) {
           {commitment.note && <p className="text-muted">{commitment.note}</p>}
         </section>
       )}
-      <CostPanel cost={account.cost} />
+      <CostPanel account={account} />
       {account.intro && <section className="card markdown-body"><NoteText text={account.intro} /></section>}
       {sections.map((section) => (
         <section className="card" key={section.name}>
-          <h2 className="section-title">{section.name}</h2>
+          <h2 className="entities-card-title">{section.name}</h2>
           <div className="markdown-body"><NoteText text={section.text} /></div>
         </section>
       ))}
       {account.news && (
         <section className="card">
-          <h2 className="section-title">News</h2>
+          <h2 className="entities-card-title">News</h2>
           <div className="markdown-body"><NoteText text={account.news} /></div>
         </section>
       )}
-      {!commitment && !account.cost.available && !account.intro && sections.length === 0 && !account.news && (
+      {!commitment && account.kind !== 'customer' && !account.intro && sections.length === 0 && !account.news && (
         <p className="text-muted">This note has nothing written in it yet.</p>
       )}
     </>
@@ -180,7 +193,7 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
   return (
     <>
       <section className="card">
-        <h2 className="section-title">Add a capture</h2>
+        <h2 className="entities-card-title">Add a capture</h2>
         <form onSubmit={submit}>
           <textarea className="input entities-textarea" rows={3} value={text} placeholder="A word of mouth, a quick update…"
                     onChange={(event) => setText(event.target.value)} aria-label="New capture" />
@@ -201,7 +214,7 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
       />
       {account.captures.captured && (
         <section className="card">
-          <h2 className="section-title">Captured automatically</h2>
+          <h2 className="entities-card-title">Captured automatically</h2>
           <div className="markdown-body"><NoteText text={account.captures.captured} /></div>
         </section>
       )}

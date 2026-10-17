@@ -104,3 +104,10 @@
   border-bottom: 1px solid var(--color-border);
 }
 .entities-activity-date { font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+
+.entities-card-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+}
+.entities-card-title .text-muted { font-size: var(--font-size-sm); font-weight: 400; }

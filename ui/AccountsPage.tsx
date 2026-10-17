@@ -45,7 +45,7 @@ function AccountGroup({ title, rows, query }: { title: string; rows: AccountRow[
   const topLevel = rows.filter((row) => !row.parent).length;
   return (
     <section className="card entities-accounts-group">
-      <h2 className="section-title">{title} <span className="text-muted">{topLevel} · {rows.length - topLevel} affiliates</span></h2>
+      <h2 className="entities-card-title">{title} <span className="text-muted">{topLevel} · {rows.length - topLevel} affiliates</span></h2>
       {shown.length === 0 && <p className="text-muted">No matches.</p>}
       <table className="entities-accounts-table">
         <thead>

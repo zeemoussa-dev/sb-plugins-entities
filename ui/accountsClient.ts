@@ -115,7 +115,12 @@ export interface Account {
   opportunities: Opportunity[];
   people: Person[];
   activity: ActivityItem[];
-  cost: { available: boolean; row: CostRow | null; error?: string };
+}
+
+export interface AccountCost {
+  available: boolean;
+  row: CostRow | null;
+  error?: string;
 }
 
 function path(kind: AccountKind, stem: string): string {
@@ -146,6 +151,18 @@ export function accountLink(kind: AccountKind, stem: string): string {
   return `/entities/${kind}/${encodeURIComponent(stem)}`;
 }
 
+/** The backend's own sentence: a refused call arrives as `{"detail": "..."}`. */
 export function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error);
+  try {
+    const parsed = JSON.parse(message);
+    if (typeof parsed?.detail === 'string') return parsed.detail;
+  } catch {
+    // not JSON: the message is already a sentence
+  }
+  return message;
+}
+
+export function fetchAccountCost(kind: AccountKind, stem: string): Promise<AccountCost> {
+  return apiFetch(`${path(kind, stem)}/cost`);
 }

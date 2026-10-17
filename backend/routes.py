@@ -59,6 +59,10 @@ def build_router(registry: EntitiesRegistry, accounts: Accounts) -> APIRouter:
     def get_account(kind: str, stem: str) -> dict:
         return _account_call(lambda: accounts.detail(kind, stem))
 
+    @router.get("/accounts/{kind}/{stem}/cost")
+    def get_account_cost(kind: str, stem: str) -> dict:
+        return _account_call(lambda: accounts.cost(kind, stem))
+
     @router.put("/accounts/{kind}/{stem}/personal-notes")
     def put_personal_notes(kind: str, stem: str, body: SectionTextBody) -> dict:
         return {"text": _account_call(lambda: accounts.set_personal_notes(kind, stem, body.text, body.previous))}

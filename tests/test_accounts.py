@@ -113,7 +113,8 @@ def test_a_customer_page_gathers_its_data(accounts, api):
     assert [o["title"] for o in page["opportunities"]] == ["Deal"]
     assert page["affiliates"] == [{"name": "Contoso Labs", "stem": "Contoso Labs"}]
     assert page["commitment"]["amount"] == 1000
-    assert page["cost"] == {"available": True, "row": {"id": "contoso", "signed": 1000,
+    assert "cost" not in page
+    assert accounts.cost("customer", "Contoso") == {"available": True, "row": {"id": "contoso", "signed": 1000,
                                                        "route": "/azure-cost-manager/report?customer=contoso"}}
 
 
@@ -127,21 +128,21 @@ def test_a_partner_page_lists_the_opportunities_naming_it_and_its_lineage(accoun
     assert [o["title"] for o in accounts.detail("partner", "Northwind")["opportunities"]] == ["Deal"]
     tiny = accounts.detail("partner", "Tiny")
     assert [h["stem"] for h in tiny["lineage"]] == ["Northwind", "North Labs"]
-    assert tiny["cost"] == {"available": False, "row": None}
+    assert accounts.cost("partner", "Tiny") == {"available": False, "row": None}
     assert api.cost.asked == []
 
 
 def test_no_cost_service_means_no_cost_panel(vault):
     fake = FakeApi(vault)
     fake.get_service = lambda name: None
-    assert Accounts(fake).detail("customer", "Contoso")["cost"] == {"available": False, "row": None}
+    assert Accounts(fake).cost("customer", "Contoso") == {"available": False, "row": None}
 
 
 def test_a_failing_cost_service_does_not_fail_the_page(accounts, api):
     def broken(stem):
         raise RuntimeError("sync in progress")
     api.cost.for_entity = broken
-    assert accounts.detail("customer", "Contoso")["cost"]["error"] == "sync in progress"
+    assert accounts.cost("customer", "Contoso")["error"] == "sync in progress"
 
 
 def test_an_unknown_hub_or_kind_is_not_found(accounts):
@@ -211,6 +212,7 @@ def test_the_http_surface(api, vault):
     assert {row["stem"] for row in client.get(base).json()["customers"]} == {"Contoso", "Contoso Labs"}
     assert client.get(f"{base}/customer/Contoso%20Labs").json()["lineage"] == [{"name": "Contoso", "stem": "Contoso"}]
     assert client.get(f"{base}/customer/Nobody").status_code == 404
+    assert client.get(f"{base}/customer/Contoso/cost").json()["row"]["id"] == "contoso"
     stale = client.put(f"{base}/customer/Contoso/personal-notes", json={"text": "x", "previous": "old"})
     assert stale.status_code == 409
     assert client.put(f"{base}/customer/Contoso/personal-notes",
