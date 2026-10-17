@@ -57,7 +57,7 @@ class Customers:
         return self.commitment(customer_stem)
 
     def insight(self, customer_stem: str) -> dict | None:
-        """The Core42 Insight terms for a hub -- `{terms, targets, note}` -- kept in
+        """The Core42 Insight terms for a hub -- `{terms, note}` -- kept in
         its own `<stem> - Insight.md` note beside the hub, or None when it has none."""
         return insight.read(Opportunities(self._api).hub_path(customer_stem))
 

@@ -5,6 +5,9 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- change: the Insight note carries `{terms, note}` only (1.6.1) -- the operator dropped Insight targets. A
+  `targets` key is now refused as unknown, and the note no longer has a Targets table.
+
 - feat: `entities.customers.insight(stem)` / `set_insight(stem, value | None)` (1.6.0), for the Core42 Insight
   plugin: `{terms: [{model, start, end?, percent?, amount?, include_marketplace?, subtract_credits?, ...}],
   targets: {"YYYY": amount}, note}`, or None. Kept in a note of its own beside the hub,

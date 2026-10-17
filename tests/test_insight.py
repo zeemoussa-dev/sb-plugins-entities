@@ -11,7 +11,6 @@ TERMS = {
          "include_marketplace": True, "subtract_credits": True},
         {"model": "yearly", "start": "2026-07-01", "amount": 20000, "billing_day": 5},
     ],
-    "targets": {"2027": 200000, "2026": 150000.0},
     "note": "Signed in March.",
 }
 
@@ -35,7 +34,7 @@ def test_insight_is_written_beside_the_hub_and_read_back(customers, vault):  # n
 
     assert saved["terms"][0]["percent"] == 3
     assert saved["terms"][1] == {"model": "yearly", "start": "2026-07-01", "amount": 20000, "billing_day": 5}
-    assert list(saved["targets"]) == ["2026", "2027"] and saved["targets"]["2026"] == 150000
+    assert "targets" not in saved
     assert saved["note"] == "Signed in March."
     assert customers.insight("Contoso") == saved
     assert contoso(vault, "Contoso.md").read_text("utf-8") == hub_before
@@ -67,8 +66,7 @@ def test_none_removes_the_note(customers, vault):  # noqa: F811
     ({"terms": [{"model": "percentage", "start": "2026-01-01", "percent": "3"}]}, "number"),
     ({"terms": [{"model": "percentage", "start": "2026-01-01", "subtract_credits": "yes"}]}, "true or false"),
     ({"terms": "x"}, "list"),
-    ({"targets": {"FY26": 1}}, "YYYY"),
-    ({"targets": {"2026": True}}, "number"),
+    ({"targets": {"2026": 1}}, "not known"),
     ({"colour": "red"}, "not known"),
 ])
 def test_a_bad_shape_is_refused_and_nothing_is_written(customers, vault, bad, message):  # noqa: F811

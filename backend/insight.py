@@ -1,5 +1,5 @@
 """A Customer's (or affiliate's, or Partner's) Insight terms: the Core42 Insight
-plugin's revenue terms and targets, kept in a note of their own beside the hub,
+plugin's revenue terms, kept in a note of their own beside the hub,
 `<hub folder>/<stem> - Insight.md`.
 
 Not on the hub (operator, 2026-10-18): terms are a list of maps, and the
@@ -24,7 +24,6 @@ from .opportunities import OpportunityError, _exists, _frontmatter_text, _long, 
 DATA_SECTION = "Data"
 _DATA_BLOCK = re.compile(r"^## Data\s*\n+```json\s*\n(.*?)\n```", re.M | re.S)
 _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_YEAR = re.compile(r"^\d{4}$")
 _TERM_DATES = ("start", "end")
 _TERM_NUMBERS = ("percent", "amount")
 _TERM_FLAGS = ("include_marketplace", "subtract_credits")
@@ -52,8 +51,8 @@ def _number(value, where: str):
 
 def validated(value: dict) -> dict:
     if not isinstance(value, dict):
-        raise OpportunityError("insight is a dict {terms, targets, note}, or None to remove it")
-    unknown = sorted(set(value) - {"terms", "targets", "note"})
+        raise OpportunityError("insight is a dict {terms, note}, or None to remove it")
+    unknown = sorted(set(value) - {"terms", "note"})
     if unknown:
         raise OpportunityError(f"these insight fields are not known: {', '.join(unknown)}")
     terms = value.get("terms") or []
@@ -83,18 +82,10 @@ def validated(value: dict) -> dict:
             if key in term and not isinstance(term[key], bool):
                 raise OpportunityError(f"{where} {key} must be true or false")
         clean_terms.append(clean)
-    targets = value.get("targets") or {}
-    if not isinstance(targets, dict):
-        raise OpportunityError("targets must be a map of year to amount")
-    clean_targets = {}
-    for year, amount in targets.items():
-        if not _YEAR.match(str(year)):
-            raise OpportunityError(f"a target's year must be YYYY, not {year!r}")
-        clean_targets[str(year)] = _number(amount, f"target {year}")
     note = value.get("note")
     if note is not None and not isinstance(note, str):
         raise OpportunityError("note must be text")
-    return {"terms": clean_terms, "targets": dict(sorted(clean_targets.items())), "note": note or ""}
+    return {"terms": clean_terms, "note": note or ""}
 
 
 def read(hub_path: Path) -> dict | None:
@@ -112,7 +103,7 @@ def read(hub_path: Path) -> dict | None:
         raise OpportunityError(f"{path.name} holds JSON that does not parse: {exc}") from exc
     if not isinstance(data, dict):
         raise OpportunityError(f"{path.name} holds JSON that is not a map")
-    return {"terms": data.get("terms") or [], "targets": data.get("targets") or {}, "note": data.get("note") or ""}
+    return {"terms": data.get("terms") or [], "note": data.get("note") or ""}
 
 
 def _cell(value) -> str:
@@ -132,8 +123,6 @@ def _readable(data: dict) -> str:
         lines += ["| " + " | ".join(_cell(term.get(c)) for c in columns) + " |" for term in data["terms"]]
     else:
         lines.append("No terms.")
-    lines += ["", "## Targets", ""]
-    lines += [f"- {year}: {amount}" for year, amount in data["targets"].items()] or ["No targets."]
     if data["note"]:
         lines += ["", "## Note", "", data["note"]]
     return "\n".join(lines)
@@ -149,7 +138,7 @@ def write(hub_path: Path, hub_name: str, value: dict | None) -> None:
     frontmatter = {"type": "Insight", "name": f"{hub_name} Insight", "parent": f"[[{hub_path.stem}]]",
                    "tags": ["kind/insight"]}
     body = (f"\n# {hub_name} — Insight\n\n"
-            "Revenue terms and targets for the Core42 Insight plugin, written by Entities. "
+            "Revenue terms for the Core42 Insight plugin, written by Entities. "
             "Edit them in Insight's Settings; the json block below is what is read, and the "
             "tables after it are regenerated from it on every save.\n\n"
             f"## {DATA_SECTION}\n\n```json\n{json.dumps(data, indent=2, ensure_ascii=False)}\n```\n\n"
