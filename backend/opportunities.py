@@ -185,6 +185,34 @@ def _with_line_appended(text: str, name: str, line: str) -> str:
     return "\n".join(lines).rstrip("\n") + "\n"
 
 
+def with_frontmatter(text: str, values: dict, key_order: list[str] = (), remove: tuple[str, ...] = ()) -> str:
+    """`text` with these frontmatter keys set and the `remove` keys gone, every
+    other line left exactly as it was. A key the note lacks goes before the
+    next key `key_order` puts after it, else at the end of the frontmatter."""
+    if not text.startswith("---\n"):
+        raise OpportunityError("this note has no frontmatter to update")
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        raise OpportunityError("this note's frontmatter is not closed")
+    lines = text[4:end].split("\n")
+    keys = [(_FRONTMATTER_KEY.match(line) or [None, None])[1] for line in lines]
+    kept = [(key, line) for key, line in zip(keys, lines) if key is None or key not in remove]
+    keys, lines = [key for key, _ in kept], [line for _, line in kept]
+    for key, value in values.items():
+        line = f"{key}: {_format_value(value)}"
+        if key in keys:
+            lines[keys.index(key)] = line
+            continue
+        position = len(lines)
+        for later in key_order[key_order.index(key) + 1:] if key in key_order else []:
+            if later in keys:
+                position = keys.index(later)
+                break
+        lines.insert(position, line)
+        keys.insert(position, key)
+    return "---\n" + "\n".join(lines) + text[end:]
+
+
 def _notes_in_own_folders(folder: Path) -> list[Path]:
     """`<folder>/<X>/<X>.md` for every subfolder that holds its own note. A
     `_`-prefixed folder is the vault's archive convention and is skipped."""
@@ -318,6 +346,11 @@ class Opportunities:
         if len(found) > 1:
             raise OpportunityError(f"more than one hub is named {stem!r}")
         return found[0]
+
+    def hub_path(self, stem: str) -> Path:
+        """Where a Customer's or an affiliate's hub note is, found among the hubs
+        that exist -- never built from the stem."""
+        return self._hub(stem)["path"]
 
     @staticmethod
     def _customer_of(hub: dict, hubs: list[dict]) -> dict | None:
@@ -675,26 +708,7 @@ class Opportunities:
         """`text` with these frontmatter keys set, every other line left exactly
         as it was. A key the note lacks (a v2 note has no `billing_profile`) goes
         where the Template's key order puts it."""
-        if not text.startswith("---\n"):
-            raise OpportunityError("this note has no frontmatter to update")
-        end = text.find("\n---\n", 4)
-        if end == -1:
-            raise OpportunityError("this note's frontmatter is not closed")
-        lines = text[4:end].split("\n")
-        keys = [(_FRONTMATTER_KEY.match(line) or [None, None])[1] for line in lines]
-        for key, value in values.items():
-            line = f"{key}: {_format_value(value)}"
-            if key in keys:
-                lines[keys.index(key)] = line
-                continue
-            position = len(lines)
-            for later in KEY_ORDER[KEY_ORDER.index(key) + 1:] if key in KEY_ORDER else []:
-                if later in keys:
-                    position = keys.index(later)
-                    break
-            lines.insert(position, line)
-            keys.insert(position, key)
-        return "---\n" + "\n".join(lines) + text[end:]
+        return with_frontmatter(text, values, KEY_ORDER)
 
     def _log(self, path: Path, before: dict, changed: dict, plan: list[dict] | None) -> None:
         parts = [f"{key} {_format_change(before.get(key))} -> {_format_change(value)}" for key, value in changed.items()]

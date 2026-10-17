@@ -7,6 +7,9 @@ never from reversing the slug, which gets names like "Al Ain" wrong.
 """
 from __future__ import annotations
 
+from . import commitment
+from .opportunities import Opportunities
+
 
 class Customers:
     def __init__(self, api) -> None:
@@ -38,6 +41,20 @@ class Customers:
             if tag.startswith("customer/") and tag in names:
                 return names[tag]
         return None
+
+    def commitment(self, customer_stem: str) -> dict | None:
+        """The signed Azure commitment on a Customer's (or an affiliate's) hub
+        note, or None when it holds none."""
+        path = Opportunities(self._api).hub_path(customer_stem)
+        frontmatter, _ = self._api.vault.read_note(path)
+        return commitment.from_frontmatter(frontmatter)
+
+    def set_commitment(self, customer_stem: str, value: dict | None) -> dict | None:
+        """Writes the commitment's `macc_*` keys on the hub note, or removes them
+        all for None; nothing else in the note changes. Returns it as now read."""
+        path = Opportunities(self._api).hub_path(customer_stem)
+        commitment.write(path, value)
+        return self.commitment(customer_stem)
 
     def subject_enricher(self, subject_kind: str, frontmatter: dict, tags: list[str]) -> dict:
         customer = self.customer_from_tags(tags)
