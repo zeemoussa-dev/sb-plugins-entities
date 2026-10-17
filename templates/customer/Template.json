@@ -33,6 +33,20 @@
         "kind/customer"
       ]
     },
+    "frontmatter_enums": {
+      "macc_type": [
+        "MACC",
+        "EA commitment",
+        "Azure Prepayment",
+        "Other"
+      ]
+    },
+    "frontmatter_rules": [
+      "The signed Azure commitment is optional and flat: macc_type, macc_amount, macc_currency, macc_start, macc_end, macc_note, macc_includes_marketplace, macc_subtracts_credits. A Customer with no commitment has none of them; one with a commitment has all of them",
+      "macc_amount is a number, never prose; macc_currency is a three-letter code, USD by default",
+      "macc_start and macc_end are dates, YYYY-MM-DD, and macc_end is not before macc_start",
+      "macc_includes_marketplace and macc_subtracts_credits are true or false: whether Marketplace counts toward the burn-down and whether credits reduce it"
+    ],
     "sections": [
       {
         "name": "Summary",
