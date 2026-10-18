@@ -101,3 +101,39 @@ def test_create_customer_refuses_a_name_already_taken(api):
 def test_an_unknown_stem_is_still_not_found(api):
     with pytest.raises(OpportunityNotFound):
         Customers(api).commitment("Nobody")
+
+
+def test_bulk_commitments_answer_every_hub_from_one_walk(api):
+    customers = Customers(api)
+    customers.set_commitment("Contoso", COMMITMENT)
+    every = customers.commitments()
+    assert every["Contoso"]["amount"] == 5000000
+    assert every["Fabrikam"] is None and every["Clinic"] is None
+    assert customers.commitments(["Contoso", "Nobody"]) == {"Contoso": every["Contoso"]}
+
+
+def test_bulk_insights(api):
+    customers = Customers(api)
+    customers.set_insight("Fabrikam", {"terms": [{"model": "yearly", "start": "2026-01-01", "amount": 5}]})
+    found = customers.insights(["Contoso", "Fabrikam"])
+    assert found["Contoso"] is None and found["Fabrikam"]["terms"][0]["amount"] == 5
+
+
+def test_a_hub_edited_outside_this_plugin_is_read_fresh(api, partners, monkeypatch):
+    from backend import opportunities as opp
+
+    customers = Customers(api)
+    assert customers.commitment("Fabrikam") is None
+    hub = partners / "Work" / "Customers" / "Fabrikam" / "Fabrikam.md"
+    text = hub.read_text("utf-8").replace('name: "Fabrikam"\n', 'name: "Fabrikam"\nmacc_type: "MACC"\nmacc_amount: 7\n')
+    hub.write_text(text, encoding="utf-8")
+    # The hub list is remembered briefly; once it lapses the changed file is re-read.
+    monkeypatch.setattr(opp, "HUB_LIST_SECONDS", 0)
+    assert customers.commitment("Fabrikam")["amount"] == 7
+
+
+def test_a_hub_made_by_this_plugin_lists_at_once_despite_the_remembered_list(api):
+    service = Opportunities(api)
+    assert "Astra Tech" not in [c["stem"] for c in service.customers()]
+    service.create_customer("Astra Tech")
+    assert "Astra Tech" in [c["stem"] for c in service.customers()]

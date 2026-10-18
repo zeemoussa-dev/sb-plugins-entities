@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import os
 import re
+import time
 import uuid
+import weakref
 from datetime import date
 from pathlib import Path
 
@@ -71,6 +73,18 @@ _FRONTMATTER_KEY = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*):")
 _EXTENDED_PREFIX = "\\\\?\\"
 
 
+# Process-wide: the backend is one process, and a hub note's frontmatter is the
+# same whichever Opportunities instance asks. The Work folder is remembered per
+# vault reader (the vault root never moves while the backend runs).
+_FRONTMATTER_CACHE: dict[Path, tuple[tuple[int, int], dict]] = {}
+_WORK_FOLDERS: "weakref.WeakKeyDictionary[object, Path]" = weakref.WeakKeyDictionary()
+# The hub list per vault reader, briefly: walking ~200 folders costs ~50 ms, and a
+# report asks once per customer. Long enough for one page, short enough that a hub
+# made outside this plugin (Obsidian, a Skill) shows within seconds.
+HUB_LIST_SECONDS = 2.0
+_HUB_LISTS: "weakref.WeakKeyDictionary[object, tuple[float, list[dict]]]" = weakref.WeakKeyDictionary()
+
+
 class OpportunityError(ValueError):
     """What was asked breaks one of the Template's rules; the message says which."""
 
@@ -100,6 +114,9 @@ def _read_text(path: Path) -> str:
 
 
 def _write_text(path: Path, text: str) -> None:
+    # Two writes inside one tick of the file clock can leave the same mtime.
+    _FRONTMATTER_CACHE.pop(Path(path), None)
+    _HUB_LISTS.clear()
     os.makedirs(_long(path.parent), exist_ok=True)
     with open(_long(path), "w", encoding="utf-8", newline="") as handle:
         handle.write(text)
@@ -308,18 +325,53 @@ class Opportunities:
     # -- hubs -----------------------------------------------------------------
 
     def _work_folder(self) -> Path | None:
-        for entry in self._api.vault.entries():
-            parts = Path(entry["path"]).parts
-            if "Work" in parts:
-                return Path(*parts[:parts.index("Work") + 1])
-        return None
+        vault = self._api.vault
+        if vault not in _WORK_FOLDERS:
+            for entry in vault.entries():
+                parts = Path(entry["path"]).parts
+                if "Work" in parts:
+                    _WORK_FOLDERS[vault] = Path(*parts[:parts.index("Work") + 1])
+                    break
+            else:
+                # Nothing indexed yet (the backend is starting): ask again next time.
+                return None
+        return _WORK_FOLDERS[vault]
+
+    def _frontmatter_of(self, path: Path) -> dict:
+        """A hub's frontmatter, re-read only when the file changed. Every stem a
+        caller passes is resolved by walking all hubs, and another plugin asks per
+        customer, so re-reading ~130 notes per call cost seconds a page. The key
+        is the file's mtime, so an edit from Obsidian, Hermes or this plugin is
+        seen on the very next call -- no TTL to wait out."""
+        try:
+            stat = os.stat(_long(path))
+        except OSError:
+            return {}
+        stamp = (stat.st_mtime_ns, stat.st_size)
+        cached = _FRONTMATTER_CACHE.get(path)
+        if cached is not None and cached[0] == stamp:
+            return cached[1]
+        frontmatter, _ = self._api.vault.read_note(path)
+        _FRONTMATTER_CACHE[path] = (stamp, frontmatter)
+        return frontmatter
 
     def _hubs(self) -> list[dict]:
         """Every Customer and Partner hub: a top-level one at `Work/<Kind>/<H>/<H>.md`
         and its affiliates at `<H>/Affiliates/<A>/<A>.md`, as deep as they nest (a
         Partner's affiliate has its own). Read off the disk, not the index: a hub
         made a moment ago must list at once, as a new opportunity does.
-        `customer_stem` is the hub's immediate parent, None at the top."""
+        `customer_stem` is the hub's immediate parent, None at the top.
+
+        The walk itself is remembered for HUB_LIST_SECONDS, so a page asking per
+        customer pays it once; this plugin's own writes forget it at once."""
+        cached = _HUB_LISTS.get(self._api.vault)
+        if cached is not None and time.monotonic() - cached[0] < HUB_LIST_SECONDS:
+            return list(cached[1])
+        hubs = self._walk_hubs()
+        _HUB_LISTS[self._api.vault] = (time.monotonic(), hubs)
+        return list(hubs)
+
+    def _walk_hubs(self) -> list[dict]:
         work = self._work_folder()
         if work is None:
             return []
@@ -327,7 +379,7 @@ class Opportunities:
 
         def walk(folder: Path, kind: str, note_type: str, parent: str | None) -> None:
             for path in _notes_in_own_folders(folder):
-                frontmatter, _ = self._api.vault.read_note(path)
+                frontmatter = self._frontmatter_of(path)
                 if _text(frontmatter.get("type")) != note_type:
                     continue
                 tags = frontmatter.get("tags") if isinstance(frontmatter.get("tags"), list) else []

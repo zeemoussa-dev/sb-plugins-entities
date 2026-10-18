@@ -45,9 +45,8 @@ class Customers:
     def commitment(self, customer_stem: str) -> dict | None:
         """The signed Azure commitment on a Customer's (or an affiliate's) hub
         note, or None when it holds none."""
-        path = Opportunities(self._api).hub_path(customer_stem)
-        frontmatter, _ = self._api.vault.read_note(path)
-        return commitment.from_frontmatter(frontmatter)
+        service = Opportunities(self._api)
+        return commitment.from_frontmatter(service._frontmatter_of(service.hub_path(customer_stem)))
 
     def set_commitment(self, customer_stem: str, value: dict | None) -> dict | None:
         """Writes the commitment's `macc_*` keys on the hub note, or removes them
@@ -55,6 +54,28 @@ class Customers:
         path = Opportunities(self._api).hub_path(customer_stem)
         commitment.write(path, value)
         return self.commitment(customer_stem)
+
+    def _hub_paths(self, stems: list[str] | None) -> dict[str, "Path"]:
+        """stem -> hub note for these stems (every hub when None), from one walk.
+        A stem that is no hub, or names more than one, is left out."""
+        found: dict[str, list] = {}
+        for hub in Opportunities(self._api)._hubs():
+            found.setdefault(hub["stem"], []).append(hub["path"])
+        wanted = found if stems is None else {stem: found.get(stem, []) for stem in stems}
+        return {stem: paths[0] for stem, paths in wanted.items() if len(paths) == 1}
+
+    def commitments(self, stems: list[str] | None = None) -> dict[str, dict | None]:
+        """`commitment` for many hubs at once -- stem -> commitment or None -- for
+        a page that shows every customer. Unknown or ambiguous stems are left out."""
+        service = Opportunities(self._api)
+        return {stem: commitment.from_frontmatter(service._frontmatter_of(path))
+                for stem, path in self._hub_paths(stems).items()}
+
+    def insights(self, stems: list[str] | None = None) -> dict[str, dict | None]:
+        """`insight` for many hubs at once -- stem -> insight or None. Unknown or
+        ambiguous stems are left out; a note whose json does not parse raises, as
+        `insight` does."""
+        return {stem: insight.read(path) for stem, path in self._hub_paths(stems).items()}
 
     def insight(self, customer_stem: str) -> dict | None:
         """The Core42 Insight terms for a hub -- `{terms, note}` -- kept in
