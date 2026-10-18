@@ -16,7 +16,8 @@ HUB = (
     'tags: ["kind/customer", "customer/contoso"]\n---\n\n## Summary\n\nA customer.\n'
 )
 SIGNED = {"type": "MACC", "amount": 5000000, "currency": "USD", "start": "2026-01-01", "end": "2028-12-31",
-          "note": "Signed with a price match", "include_marketplace": True, "subtract_credits": False}
+          "note": "Signed with a price match", "include_marketplace": True, "subtract_credits": False,
+          "affiliates": "own"}
 
 
 @pytest.fixture()
@@ -59,7 +60,8 @@ def test_set_writes_only_the_macc_keys_and_reads_back(customers, vault):
         'tags: ["kind/customer", "customer/contoso"]\n',
         'tags: ["kind/customer", "customer/contoso"]\nmacc_type: "MACC"\nmacc_amount: 5000000\n'
         'macc_currency: "USD"\nmacc_start: "2026-01-01"\nmacc_end: "2028-12-31"\n'
-        'macc_note: "Signed with a price match"\nmacc_includes_marketplace: true\nmacc_subtracts_credits: false\n')
+        'macc_note: "Signed with a price match"\nmacc_includes_marketplace: true\nmacc_subtracts_credits: false\n'
+        'macc_affiliates: "own"\n')
 
 
 def test_defaults_fill_what_the_caller_leaves_out(customers):
@@ -67,7 +69,8 @@ def test_defaults_fill_what_the_caller_leaves_out(customers):
                                                        "start": "2026-07-01", "end": "2027-06-30"})
 
     assert result == {"type": "Azure Prepayment", "amount": 250000.5, "currency": "USD", "start": "2026-07-01",
-                      "end": "2027-06-30", "note": "", "include_marketplace": True, "subtract_credits": True}
+                      "end": "2027-06-30", "note": "", "include_marketplace": True, "subtract_credits": True,
+                      "affiliates": "roll up"}
 
 
 def test_rewriting_replaces_in_place_and_none_clears_every_key(customers, vault):
@@ -87,7 +90,15 @@ def test_a_hand_edited_value_is_read_not_refused(customers, vault):
 
     assert customers.commitment("Contoso") == {
         "type": "MACC", "amount": 1200000, "currency": "USD", "start": "", "end": "", "note": "",
-        "include_marketplace": True, "subtract_credits": True}
+        "include_marketplace": True, "subtract_credits": True, "affiliates": "roll up"}
+
+
+def test_a_hand_typed_own_reads_as_own_and_anything_else_as_roll_up(customers, vault):
+    path = vault / "Work" / "Customers" / "Contoso" / "Contoso.md"
+    for typed, read in (("Own", "own"), ("shared", "roll up")):
+        write(path, HUB.replace("---\n\n", f'macc_type: "MACC"\nmacc_affiliates: "{typed}"\n---\n\n', 1))
+
+        assert customers.commitment("Contoso")["affiliates"] == read
 
 
 def test_a_bad_commitment_or_an_unknown_customer_is_refused_and_nothing_is_written(customers, vault):
@@ -100,6 +111,7 @@ def test_a_bad_commitment_or_an_unknown_customer_is_refused_and_nothing_is_writt
         {**SIGNED, "start": "2026-13-01"},
         {**SIGNED, "end": "2025-12-31"},
         {**SIGNED, "include_marketplace": "yes"},
+        {**SIGNED, "affiliates": "shared"},
         {**SIGNED, "owner": "someone"},
         "MACC",
     ]:

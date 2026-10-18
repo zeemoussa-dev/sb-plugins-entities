@@ -5,6 +5,13 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: **`macc_affiliates` on a Customer's commitment** (1.8.0; operator, 2026-10-18). It says how a parent's
+  affiliates relate to its MACC. With `roll up` (the default, as DGE), they sign none of their own, so their
+  consumption burns the parent's. With `own` (as Mubadala), each signed its own, so only the parent's own
+  enrollments burn it. A hand-typed value other than `own` reads as `roll up`. The account page shows it, and
+  `entities.customers.COMMITMENT_FIELDS` names the fields `set_commitment` accepts, so a caller can leave out one
+  an older Entities does not know. Read by Azure Cost Manager and Core42 Insight.
+
 - fix: a hub looked up while the vault index is still loading -- seconds after every backend reload -- no longer
   reads as "not found" (1.7.1). Entities waits for the index (up to 20 s), then raises `VaultNotReady` (a
   RuntimeError, deliberately not a ValueError; HTTP 503), so a caller never shows a customer with saved Insight terms

@@ -146,6 +146,8 @@ function Overview({ account }: { account: Account }) {
             <div><span className="text-muted">Term</span><strong>{commitment.start} → {commitment.end}</strong></div>
             <div><span className="text-muted">Marketplace counts</span><strong>{commitment.include_marketplace ? 'Yes' : 'No'}</strong></div>
             <div><span className="text-muted">Credits subtract</span><strong>{commitment.subtract_credits ? 'Yes' : 'No'}</strong></div>
+            <div><span className="text-muted">Affiliates</span>
+              <strong>{commitment.affiliates === 'own' ? 'Sign their own' : 'Roll up into it'}</strong></div>
           </div>
           {commitment.note && <p className="text-muted">{commitment.note}</p>}
         </section>

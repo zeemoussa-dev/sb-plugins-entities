@@ -14,6 +14,10 @@ from datetime import date
 from .opportunities import OpportunityError, _read_text, _text, _write_text, with_frontmatter
 
 TYPES = ["MACC", "EA commitment", "Azure Prepayment", "Other"]
+# How a parent's affiliates relate to its commitment (operator, 2026-10-18): "roll up"
+# -- they sign none of their own, so their consumption burns the parent's (DGE) -- or
+# "own" -- each signed its own, so only the parent's own enrollments burn it (Mubadala).
+AFFILIATES = ["roll up", "own"]
 # Field of the commitment -> its frontmatter key, in the order they are written.
 KEYS = {
     "type": "macc_type",
@@ -24,6 +28,7 @@ KEYS = {
     "note": "macc_note",
     "include_marketplace": "macc_includes_marketplace",
     "subtract_credits": "macc_subtracts_credits",
+    "affiliates": "macc_affiliates",
 }
 _CURRENCY = re.compile(r"^[A-Z]{3}$")
 _NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
@@ -67,6 +72,9 @@ def validated(commitment: dict) -> dict:
     currency = _text(commitment.get("currency")) or "USD"
     if not _CURRENCY.match(currency):
         raise OpportunityError(f"currency must be a three-letter code such as USD, not {currency!r}")
+    affiliates = _text(commitment.get("affiliates")) or AFFILIATES[0]
+    if affiliates not in AFFILIATES:
+        raise OpportunityError(f"affiliates must be one of {', '.join(AFFILIATES)}, not {affiliates!r}")
     start, end = _date(commitment.get("start"), "start"), _date(commitment.get("end"), "end")
     if end < start:
         raise OpportunityError(f"end {end} is before start {start}")
@@ -75,6 +83,7 @@ def validated(commitment: dict) -> dict:
         "note": _text(commitment.get("note")),
         "include_marketplace": _flag(commitment.get("include_marketplace"), "include_marketplace"),
         "subtract_credits": _flag(commitment.get("subtract_credits"), "subtract_credits"),
+        "affiliates": affiliates,
     }
 
 
@@ -98,6 +107,8 @@ def from_frontmatter(frontmatter: dict) -> dict | None:
         "note": _text(frontmatter.get(KEYS["note"])),
         "include_marketplace": flag(KEYS["include_marketplace"]),
         "subtract_credits": flag(KEYS["subtract_credits"]),
+        # Anything typed by hand other than "own" reads as the default.
+        "affiliates": "own" if _text(frontmatter.get(KEYS["affiliates"])).lower() == "own" else AFFILIATES[0],
     }
 
 

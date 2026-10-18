@@ -115,5 +115,10 @@ raised in the framework.
   seconds after. The Work folder is found from the index, so a lookup then waits
   (`INDEX_WAIT_SECONDS`) and raises `VaultNotReady` (not a ValueError) if it never
   loads. `notes_in_kind` is no fallback: it lists only notes directly in `Work/<kind>/`.
+- **[2026-10-18] A new commitment field ships with `COMMITMENT_FIELDS`.** `validated()`
+  refuses unknown fields and fills absent ones with defaults, so a caller writing an
+  older shape would reset a field like `affiliates`. Callers read
+  `entities.customers.COMMITMENT_FIELDS`, send only those, and pass every field they
+  read back through on a write.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.

@@ -12,6 +12,10 @@ from .opportunities import Opportunities
 
 
 class Customers:
+    # The commitment fields `set_commitment` accepts, so a caller can leave out one
+    # an older Entities does not know rather than have the whole write refused.
+    COMMITMENT_FIELDS = tuple(commitment.KEYS)
+
     def __init__(self, api) -> None:
         self._api = api
 

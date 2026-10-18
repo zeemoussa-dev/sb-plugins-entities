@@ -32,6 +32,8 @@ export interface Commitment {
   note: string;
   include_marketplace: boolean;
   subtract_credits: boolean;
+  /** A parent's affiliates: their consumption burns this commitment, or each signed its own. */
+  affiliates?: 'roll up' | 'own';
 }
 
 export interface Opportunity {
