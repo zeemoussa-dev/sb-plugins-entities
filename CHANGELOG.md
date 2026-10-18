@@ -5,6 +5,9 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- chore: 1.8.0 is built for Plugin API 12 (framework `REQ-SB-95` added `register_action` and
+  `register_tag_namespace`). Entities uses neither; the host loads only plugins built for its exact API.
+
 - feat: **`macc_affiliates` on a Customer's commitment** (1.8.0; operator, 2026-10-18). It says how a parent's
   affiliates relate to its MACC. With `roll up` (the default, as DGE), they sign none of their own, so their
   consumption burns the parent's. With `own` (as Mubadala), each signed its own, so only the parent's own
