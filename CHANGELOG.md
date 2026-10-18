@@ -5,6 +5,9 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- feat: the Insight note lists an upfront term's `payments` (instalments, Insight 0.4.0) under the Terms table, so
+  they read in Obsidian (1.6.2). The json was already kept as sent.
+
 - change: the Insight note carries `{terms, note}` only (1.6.1) -- the operator dropped Insight targets. A
   `targets` key is now refused as unknown, and the note no longer has a Targets table.
 

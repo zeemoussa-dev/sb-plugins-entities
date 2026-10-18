@@ -123,6 +123,16 @@ def _readable(data: dict) -> str:
         lines += ["| " + " | ".join(_cell(term.get(c)) for c in columns) + " |" for term in data["terms"]]
     else:
         lines.append("No terms.")
+    # An upfront term paid in instalments (Insight 0.4.0): one list per term that has them.
+    for index, term in enumerate(data["terms"], 1):
+        payments = term.get("payments")
+        if not isinstance(payments, list) or not payments:
+            continue
+        lines += ["", f"Payments for term {index} ({_cell(term.get('model'))} from {_cell(term.get('start'))}):", ""]
+        for payment in payments:
+            if isinstance(payment, dict):
+                note = f" -- {payment['note']}" if payment.get("note") else ""
+                lines.append(f"- {_cell(payment.get('date'))}: {_cell(payment.get('amount'))}{note}")
     if data["note"]:
         lines += ["", "## Note", "", data["note"]]
     return "\n".join(lines)

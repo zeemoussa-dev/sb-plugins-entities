@@ -45,6 +45,16 @@ def test_insight_is_written_beside_the_hub_and_read_back(customers, vault):  # n
     assert "| yearly | 2026-07-01 |  |  | 20000 |  |  |" in text
 
 
+def test_upfront_payments_are_kept_and_listed_for_obsidian(customers, vault):  # noqa: F811
+    upfront = {"model": "upfront", "start": "2026-01-01", "amount": 30000,
+               "payments": [{"date": "2026-01-15", "amount": 10000, "note": "on signature"},
+                            {"date": "2026-04-15", "amount": 20000}]}
+    saved = customers.set_insight("Contoso", {"terms": [upfront]})
+    assert saved["terms"][0]["payments"] == upfront["payments"]
+    text = contoso(vault, "Contoso - Insight.md").read_text("utf-8")
+    assert "Payments for term 1 (upfront from 2026-01-01):\n\n- 2026-01-15: 10000 -- on signature\n- 2026-04-15: 20000" in text
+
+
 def test_an_affiliate_has_its_own_insight(customers, vault):  # noqa: F811
     customers.set_insight("Contoso Labs", {"terms": [{"model": "upfront", "start": "2026-02-01", "amount": 1}]})
     assert (vault / "Work/Customers/Contoso/Affiliates/Contoso Labs/Contoso Labs - Insight.md").exists()
