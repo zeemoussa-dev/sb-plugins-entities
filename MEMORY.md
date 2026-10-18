@@ -110,5 +110,10 @@ raised in the framework.
   `_write_text` clears both -- every write to a vault note goes through it, or a write
   in the same file-clock tick would read back stale. Offer a bulk read
   (`commitments`, `insights`) for anything a report shows for every customer.
+- **[2026-10-18] An empty vault index means "not loaded yet", never "no such hub".**
+  The backend reloads whenever a backend file changes, and the index is empty for
+  seconds after. The Work folder is found from the index, so a lookup then waits
+  (`INDEX_WAIT_SECONDS`) and raises `VaultNotReady` (not a ValueError) if it never
+  loads. `notes_in_kind` is no fallback: it lists only notes directly in `Work/<kind>/`.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.

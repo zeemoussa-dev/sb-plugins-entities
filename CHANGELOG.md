@@ -5,6 +5,11 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- fix: a hub looked up while the vault index is still loading -- seconds after every backend reload -- no longer
+  reads as "not found" (1.7.1). Entities waits for the index (up to 20 s), then raises `VaultNotReady` (a
+  RuntimeError, deliberately not a ValueError; HTTP 503), so a caller never shows a customer with saved Insight terms
+  as having none. The Customers & Partners page shares the same lookup.
+
 - perf: resolving a hub stem no longer re-reads every hub note (1.7.0). A hub's frontmatter is cached on its file's
   mtime and size, and the hub list for 2 seconds; this plugin's own writes clear both at once. 53 `commitment()`
   calls on a real vault: 5.8 s -> 0.01 s. New bulk reads for a page that shows every customer:
