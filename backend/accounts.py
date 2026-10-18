@@ -96,11 +96,7 @@ class Accounts:
     # -- finding hubs -----------------------------------------------------------
 
     def _work_folder(self) -> Path | None:
-        for entry in self._api.vault.entries():
-            parts = Path(entry["path"]).parts
-            if "Work" in parts:
-                return Path(*parts[:parts.index("Work") + 1])
-        return None
+        return Opportunities(self._api)._work_folder()
 
     def _hubs(self, kind: str) -> list[dict]:
         """Every hub of one kind, read off the disk: `<Kind>/<H>/<H>.md`, and its

@@ -137,3 +137,29 @@ def test_a_hub_made_by_this_plugin_lists_at_once_despite_the_remembered_list(api
     assert "Astra Tech" not in [c["stem"] for c in service.customers()]
     service.create_customer("Astra Tech")
     assert "Astra Tech" in [c["stem"] for c in service.customers()]
+
+
+def test_a_lookup_waits_for_an_index_that_is_still_loading(partners):
+    """After a backend reload the index is empty for seconds: wait, never answer "not found"."""
+    fake = FakeApi(partners)
+    loaded = fake.vault.entries
+    calls = []
+
+    def entries():
+        calls.append(1)
+        return loaded() if len(calls) > 2 else []
+
+    fake.vault.entries = entries
+    assert Customers(fake).commitment("Contoso") is None
+    assert len(calls) == 3
+
+
+def test_an_index_that_never_loads_is_not_ready_not_absent(partners, monkeypatch):
+    from backend import opportunities as opp
+
+    monkeypatch.setattr(opp, "INDEX_WAIT_SECONDS", 0)
+    fake = FakeApi(partners)
+    fake.vault.entries = lambda: []
+    with pytest.raises(opp.VaultNotReady):
+        Customers(fake).insight("Contoso")
+    assert not issubclass(opp.VaultNotReady, ValueError)

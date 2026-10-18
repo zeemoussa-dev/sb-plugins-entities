@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .accounts import AccountConflict, Accounts
-from .opportunities import OpportunityError, OpportunityNotFound
+from .opportunities import OpportunityError, OpportunityNotFound, VaultNotReady
 from .registry import DuplicateEntityError, EntitiesRegistry, EntityNotFoundError
 
 
@@ -51,6 +51,8 @@ def _account_call(call):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except OpportunityError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except VaultNotReady as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 def build_router(registry: EntitiesRegistry, accounts: Accounts) -> APIRouter:
@@ -58,7 +60,7 @@ def build_router(registry: EntitiesRegistry, accounts: Accounts) -> APIRouter:
 
     @router.get("/accounts")
     def list_accounts() -> dict:
-        return accounts.list()
+        return _account_call(accounts.list)
 
     @router.post("/accounts/customer")
     def post_customer(body: NewCustomerBody) -> dict:

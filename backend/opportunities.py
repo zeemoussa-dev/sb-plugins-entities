@@ -85,6 +85,14 @@ HUB_LIST_SECONDS = 2.0
 _HUB_LISTS: "weakref.WeakKeyDictionary[object, tuple[float, list[dict]]]" = weakref.WeakKeyDictionary()
 
 
+INDEX_WAIT_SECONDS = 20.0
+
+
+class VaultNotReady(RuntimeError):
+    """The vault index has not loaded yet. Deliberately not a ValueError: a caller
+    that reads ValueError as "no such hub" must not read this as "no data"."""
+
+
 class OpportunityError(ValueError):
     """What was asked breaks one of the Template's rules; the message says which."""
 
@@ -327,14 +335,21 @@ class Opportunities:
     def _work_folder(self) -> Path | None:
         vault = self._api.vault
         if vault not in _WORK_FOLDERS:
-            for entry in vault.entries():
-                parts = Path(entry["path"]).parts
-                if "Work" in parts:
-                    _WORK_FOLDERS[vault] = Path(*parts[:parts.index("Work") + 1])
+            # The backend reloads whenever a backend file changes, and for seconds
+            # after each reload the index is empty. Answering then would read every
+            # hub as "not found" -- Insight showed a customer with saved terms as
+            # having none -- so wait for the index, and say so if it never comes.
+            deadline = time.monotonic() + INDEX_WAIT_SECONDS
+            while True:
+                found = next((Path(*parts[:parts.index("Work") + 1])
+                              for parts in (Path(entry["path"]).parts for entry in vault.entries())
+                              if "Work" in parts), None)
+                if found is not None:
+                    _WORK_FOLDERS[vault] = found
                     break
-            else:
-                # Nothing indexed yet (the backend is starting): ask again next time.
-                return None
+                if time.monotonic() >= deadline:
+                    raise VaultNotReady("the vault index is still loading (the backend restarted); try again shortly")
+                time.sleep(0.25)
         return _WORK_FOLDERS[vault]
 
     def _frontmatter_of(self, path: Path) -> dict:
