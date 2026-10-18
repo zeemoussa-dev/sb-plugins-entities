@@ -105,5 +105,10 @@ raised in the framework.
   and nothing re-serialises a body, so it survives; the hub stays untouched. A json
   block that does not parse is an error, never "no data" -- or the next save would
   overwrite a hand edit.
+- **[2026-10-18] Another plugin asks per customer, so stem resolution must be cheap.**
+  Hub frontmatter is cached on (mtime, size), the hub list for `HUB_LIST_SECONDS`, and
+  `_write_text` clears both -- every write to a vault note goes through it, or a write
+  in the same file-clock tick would read back stale. Offer a bulk read
+  (`commitments`, `insights`) for anything a report shows for every customer.
 - **[2026-09-17] Every change ships through publishing.** A published version is
   immutable, so a change means a new `version`.

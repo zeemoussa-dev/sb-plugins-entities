@@ -5,6 +5,12 @@ repository and is never copied in here.
 
 ## [Unreleased]
 
+- perf: resolving a hub stem no longer re-reads every hub note (1.7.0). A hub's frontmatter is cached on its file's
+  mtime and size, and the hub list for 2 seconds; this plugin's own writes clear both at once. 53 `commitment()`
+  calls on a real vault: 5.8 s -> 0.01 s. New bulk reads for a page that shows every customer:
+  `entities.customers.commitments(stems=None)` and `insights(stems=None)` -> `{stem: value or None}`, unknown or
+  ambiguous stems left out.
+
 - feat: the Insight note lists an upfront term's `payments` (instalments, Insight 0.4.0) under the Terms table, so
   they read in Obsidian (1.6.2). The json was already kept as sent.
 
