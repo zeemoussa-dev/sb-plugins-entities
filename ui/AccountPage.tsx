@@ -101,10 +101,10 @@ function CostPanel({ account }: { account: Account }) {
     <section className="card">
       <div className="entities-account-section-head">
         <h2 className="entities-card-title">Azure consumption</h2>
-        {row?.route && <Link className="btn" to={row.route}>Open in Azure Cost</Link>}
+        {row?.route && <Link className="btn" to={row.route}>Open in Azure Customer 360</Link>}
       </div>
-      {cost.error && <p className="entities-error">Azure Cost Manager could not answer: {cost.error}</p>}
-      {!row && !cost.error && <p className="text-muted">Not linked to a customer in Azure Cost Manager.</p>}
+      {cost.error && <p className="entities-error">Azure Customer 360 could not answer: {cost.error}</p>}
+      {!row && !cost.error && <p className="text-muted">Not linked to a customer in Azure Customer 360.</p>}
       {row && (
         <>
           <div className="entities-tiles">

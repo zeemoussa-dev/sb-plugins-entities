@@ -3,6 +3,10 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.8.1] - 2026-10-23
+
+- chore: Azure Cost Manager is now called **Azure Customer 360**; the account page's link and messages say so ("Open in Azure Customer 360").
+
 ## [Unreleased]
 
 - chore: 1.8.0 is built for Plugin API 12 (framework `REQ-SB-95` added `register_action` and
