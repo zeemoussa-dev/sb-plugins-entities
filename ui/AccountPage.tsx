@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type KeyboardEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { Breadcrumbs } from '../../pluginHost/breadcrumbs';
 import { NoteText } from '../../pluginHost/noteText';
 import { useUrlState } from '../../pluginHost/state';
 import {
   accountLink, addCapture, errorText, fetchAccount, fetchAccountCost, savePersonalNotes,
-  type Account, type AccountCost, type AccountKind, type CostRow,
+  type Account, type AccountCost, type AccountKind, type AddedCapture, type CostRow,
 } from './accountsClient';
 
 const TABS = ['overview', 'notes', 'opportunities', 'people', 'activity'] as const;
@@ -178,21 +178,24 @@ function Overview({ account }: { account: Account }) {
  * and signed with who added it and when (operator, 2026-10-24). */
 function CapturesPanel({ account, onChange }: { account: Account; onChange: (account: Account) => void }) {
   const [composing, setComposing] = useState(false);
-  const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<AddedCapture['added'] | null>(null);
   const captures = account.captures;
 
-  const close = () => { setComposing(false); setTitle(''); setText(''); setError(null); };
+  const close = () => { setComposing(false); setText(''); setError(null); };
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!text.trim()) return;
+  // Clicking away is "done", as in the vault editor: there is no Save button to find.
+  const finish = async () => {
+    if (saving) return;
+    if (!text.trim()) { close(); return; }
     setSaving(true);
     setError(null);
     try {
-      onChange({ ...account, captures: await addCapture(account.kind, account.stem, title, text) });
+      const result = await addCapture(account.kind, account.stem, '', text);
+      onChange({ ...account, captures: { exists: result.exists, stem: result.stem, body: result.body } });
+      setSaved(result.added);
       close();
     } catch (caught) {
       setError(errorText(caught));
@@ -201,28 +204,41 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
     }
   };
 
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void finish(); }
+    if (event.key === 'Escape') { event.preventDefault(); close(); }
+  };
+
   return (
     <section className="card">
       <div className="entities-account-section-head">
         <h2 className="entities-card-title">Captures</h2>
-        <div className="entities-actions">
-          {captures.exists && <Link className="btn" to={browse(captures.stem)}>Edit in vault</Link>}
-          {!composing && <button type="button" className="btn btn-primary" onClick={() => setComposing(true)}>New capture</button>}
-        </div>
+        {captures.exists && <Link className="btn" to={browse(captures.stem)}>Edit in vault</Link>}
       </div>
-      {composing && (
-        <form className="entities-capture-form" onSubmit={submit}>
-          <input className="input" value={title} placeholder="Title -- e.g. Call with the CIO" autoFocus
-                 onChange={(event) => setTitle(event.target.value)} aria-label="Capture title" />
-          <textarea className="input entities-textarea" rows={5} value={text} placeholder="What happened, what was said…"
-                    onChange={(event) => setText(event.target.value)} aria-label="Capture text" />
-          <div className="entities-actions">
-            <button type="submit" className="btn btn-primary" disabled={saving || !text.trim()}>{saving ? 'Saving…' : 'Save capture'}</button>
-            <button type="button" className="btn" disabled={saving} onClick={close}>Cancel</button>
-            <span className="text-muted entities-small">Its own section at the top, with your name and the time.</span>
-          </div>
-          {error && <p className="entities-error">{error}</p>}
-        </form>
+      {!composing && !saving && (
+        <button type="button" className="entities-capture-start" onClick={() => { setSaved(null); setComposing(true); }}>
+          <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
+          Type a new capture…
+        </button>
+      )}
+      {(composing || saving) && (
+        <div className="entities-capture-inplace">
+          <textarea value={text} autoFocus readOnly={saving} rows={Math.max(4, text.split('\n').length + 1)}
+                    placeholder="What happened, what was said… Click away when you're done."
+                    onChange={(event) => setText(event.target.value)} onBlur={() => void finish()} onKeyDown={onKeyDown}
+                    aria-label="New capture" />
+          <p className="text-muted entities-small">
+            {saving ? '✨ Compass is titling it and tidying the typing…'
+              : 'Saves when you click away (or Ctrl+Enter) -- titled and tidied by Compass, signed with your name and the time. Esc cancels.'}
+          </p>
+        </div>
+      )}
+      {error && <p className="entities-error">{error}</p>}
+      {saved && (
+        <p className="entities-capture-saved">
+          Saved as <strong>{saved.title}</strong>{saved.tidied ? ', typing tidied.' : '.'}
+          {saved.note && <span className="text-muted"> {saved.note}</span>}
+        </p>
       )}
       {captures.body
         ? <div className="markdown-body"><NoteText text={captures.body} /></div>

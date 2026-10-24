@@ -142,8 +142,14 @@ export function savePersonalNotes(kind: AccountKind, stem: string, text: string,
   return apiFetch(`${path(kind, stem)}/personal-notes`, { method: 'PUT', body: JSON.stringify({ text, previous }) });
 }
 
-/** A new capture: its own section in the Captures note, signed with who added it and when. */
-export function addCapture(kind: AccountKind, stem: string, title: string, text: string): Promise<Captures> {
+/** What saving a capture did: the title it got, and whether Compass's tidy was used (and why not). */
+export interface AddedCapture extends Captures {
+  added: { title: string; tidied: boolean; note: string };
+}
+
+/** A new capture: its own section in the Captures note, signed with who added it and when.
+ *  An empty `title` asks Compass to title it and fix its typing. */
+export function addCapture(kind: AccountKind, stem: string, title: string, text: string): Promise<AddedCapture> {
   return apiFetch(`${path(kind, stem)}/captures`, { method: 'POST', body: JSON.stringify({ title, text }) });
 }
 
