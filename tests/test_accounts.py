@@ -108,7 +108,8 @@ def test_a_customer_page_gathers_its_data(accounts, api):
     assert page["intro"] == "Intro text."
     assert [s["name"] for s in page["sections"]] == ["Summary", "Personal Notes", "Actions", "Opportunities"]
     assert page["personal_notes"] == "My own words."
-    assert page["captures"] == {"exists": True, "notes": "- 2026-10-01: met the CIO", "captured": "- automated line"}
+    assert page["captures"]["stem"] == "Contoso-captures" and page["captures"]["exists"]
+    assert "- 2026-10-01: met the CIO" in page["captures"]["body"] and "- automated line" in page["captures"]["body"]
     assert [p["name"] for p in page["people"]] == ["Ann", "Bob"]
     assert [o["title"] for o in page["opportunities"]] == ["Deal"]
     assert page["affiliates"] == [{"name": "Contoso Labs", "stem": "Contoso Labs"}]
@@ -177,24 +178,29 @@ def test_a_hub_without_personal_notes_gets_the_section_before_actions(accounts, 
     assert text.index("## Personal Notes\n\nHello") < text.index("## Actions")
 
 
-def test_a_capture_is_appended_under_notes_dated_today(accounts, vault):
-    captures = accounts.add_capture("customer", "Contoso", "Heard in the lift\nsecond line")
-    assert captures["notes"] == f"- 2026-10-01: met the CIO\n\n- {_today()}: Heard in the lift\n  second line"
-    assert captures["captured"] == "- automated line"
+def test_a_capture_is_a_section_of_its_own_with_who_and_when_newest_first(accounts, vault):
+    first = accounts.add_capture("customer", "Contoso", "Lift chat", "Heard in the lift\nsecond line", "Mahmoud")
+    accounts.add_capture("customer", "Contoso", "## Board", "Board approved", "Sara")
     text = hub_text(vault, "Customers", "Contoso", "Contoso-captures.md")
+    today = _today()
+    board = text.index(f"## {today} — Board\n\n*Added by Sara on {today} ")
+    lift = text.index(f"## {today} — Lift chat\n\n*Added by Mahmoud on {today} ")
+    assert board < lift < text.index("## Notes")
+    assert "Heard in the lift\nsecond line" in text
     assert text.startswith(CAPTURES.split("## Notes")[0])
+    assert "## Captured\n\n- automated line" in text
+    assert first["stem"] == "Contoso-captures" and "Lift chat" in first["body"]
+
+
+def test_a_capture_without_a_title_or_author_still_reads(accounts, vault):
+    accounts.add_capture("customer", "Contoso", " ", "Just text", "")
+    text = hub_text(vault, "Customers", "Contoso", "Contoso-captures.md")
+    assert f"## {_today()} — Capture\n\n*Added by someone on " in text
 
 
 def test_an_empty_capture_is_refused(accounts):
     with pytest.raises(OpportunityError):
-        accounts.add_capture("customer", "Contoso", "  \n ")
-
-
-def test_capture_notes_are_editable_and_captured_is_kept(accounts, vault):
-    captures = accounts.set_capture_notes("customer", "Contoso", "rewritten", "- 2026-10-01: met the CIO")
-    assert captures == {"exists": True, "notes": "rewritten", "captured": "- automated line"}
-    with pytest.raises(AccountConflict):
-        accounts.set_capture_notes("customer", "Contoso", "again", "- 2026-10-01: met the CIO")
+        accounts.add_capture("customer", "Contoso", "Title", "  \n ", "Mahmoud")
 
 
 def test_the_http_surface(api, vault):
@@ -220,13 +226,26 @@ def test_the_http_surface(api, vault):
     assert stale.status_code == 409
     assert client.put(f"{base}/customer/Contoso/personal-notes",
                       json={"text": "x", "previous": "My own words."}).json() == {"text": "x"}
-    assert client.post(f"{base}/customer/Contoso/captures", json={"text": " "}).status_code == 400
-    assert client.post(f"{base}/customer/Contoso/captures", json={"text": "hi"}).json()["notes"].endswith(": hi")
+    assert client.post(f"{base}/customer/Contoso/captures", json={"title": "T", "text": " "}).status_code == 400
+    added = client.post(f"{base}/customer/Contoso/captures", json={"title": "Call", "text": "hi"}).json()
+    assert "Call" in added["body"] and "*Added by someone on " in added["body"]
 
 
 def test_a_hub_with_no_captures_note_gets_one_on_its_first_capture(accounts, vault):
-    captures = accounts.add_capture("partner", "Northwind", "First")
-    assert captures["notes"] == f"- {_today()}: First"
+    captures = accounts.add_capture("partner", "Northwind", "Kickoff", "First", "Mahmoud")
+    assert "Kickoff" in captures["body"]
     text = hub_text(vault, "Partners", "Northwind", "Northwind-captures.md")
     assert 'tags: ["partner/northwind", "kind/captures"]' in text
-    assert text.index("## Notes") < text.index("## Captured")
+    assert text.index("Kickoff") < text.index("## Notes") < text.index("## Captured")
+
+
+def test_a_captures_note_is_made_on_request_for_the_vault_editor(accounts, vault):
+    assert accounts.detail("partner", "Northwind")["captures"] == {
+        "exists": False, "stem": "Northwind-captures", "body": ""}
+    made = accounts.create_captures_note("partner", "Northwind")
+    assert made["exists"] and made["stem"] == "Northwind-captures"
+    assert (vault / "Work" / "Partners" / "Northwind" / "Northwind-captures.md").exists()
+    # Asking again changes nothing.
+    before = (vault / "Work" / "Partners" / "Northwind" / "Northwind-captures.md").read_text("utf-8")
+    accounts.create_captures_note("partner", "Northwind")
+    assert (vault / "Work" / "Partners" / "Northwind" / "Northwind-captures.md").read_text("utf-8") == before

@@ -11,12 +11,13 @@ section changes, every path comes from a hub found on disk, never from a caller.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from pathlib import Path
 
 from . import commitment
 from .opportunities import (
     Opportunities, OpportunityError, OpportunityNotFound, _exists, _frontmatter_text, _long,
-    _notes_in_own_folders, _read_text, _section_bounds, _tag_slug, _text, _today, _with_line_appended,
+    _notes_in_own_folders, _read_text, _section_bounds, _tag_slug, _text,
     _with_section, _write_text,
 )
 
@@ -232,12 +233,20 @@ class Accounts:
         return hub["path"].parent / f"{hub['stem']}-captures.md"
 
     def _captures(self, hub: dict) -> dict:
+        # `stem` is what the vault editor opens: the page edits the whole note
+        # there, since real Captures notes keep their content in sections of
+        # their own, not only under `## Notes`.
         path = self._captures_path(hub)
         if not _exists(path):
-            return {"exists": False, "notes": "", "captured": ""}
-        text = _read_text(path)
-        return {"exists": True, "notes": _section_text(text, CAPTURE_NOTES) or "",
-                "captured": _section_text(text, CAPTURED) or ""}
+            return {"exists": False, "stem": path.stem, "body": ""}
+        _, body = self._api.vault.read_note(path)
+        return {"exists": True, "stem": path.stem, "body": body.strip()}
+
+    def create_captures_note(self, kind: str, stem: str) -> dict:
+        """The hub's Captures note, made when it has none, so the editor has a note to open."""
+        hub, _ = self._hub(kind, stem)
+        self._ensure_captures(hub)
+        return self._captures(hub)
 
     def _news(self, hub: dict) -> str | None:
         path = hub["path"].parent / f"{hub['stem']}-news.md"
@@ -320,22 +329,29 @@ class Accounts:
             _write_if_changed(path, "", _frontmatter_text(frontmatter) + body)
         return path
 
-    def set_capture_notes(self, kind: str, stem: str, text: str, previous: str) -> dict:
+    def add_capture(self, kind: str, stem: str, title: str, text: str, author: str) -> dict:
+        """A capture is a section of its own (operator, 2026-10-24): `## <date> — <title>`,
+        then who added it and when, then the text -- the shape the operator's own
+        captures already have. Newest first: it goes above every other section."""
         hub, _ = self._hub(kind, stem)
-        self._replace_section(self._ensure_captures(hub), CAPTURE_NOTES, text, previous, before=CAPTURED)
-        return self._captures(hub)
-
-    def add_capture(self, kind: str, stem: str, text: str) -> dict:
-        hub, _ = self._hub(kind, stem)
-        lines = [line.rstrip() for line in _text_block(text).split("\n")]
-        if not any(lines):
+        body = _text_block(text)
+        if not body:
             raise OpportunityError("a capture needs some text")
-        entry = "\n".join([f"- {_today()}: {lines[0]}", *(f"  {line}" if line else "" for line in lines[1:])])
+        title = _text(title).lstrip("#").strip() or "Capture"
+        now = datetime.now()
+        heading = f"## {now.date().isoformat()} — {title}"
+        signed = f"*Added by {_text(author) or 'someone'} on {now.strftime('%Y-%m-%d %H:%M')}*"
+        block = [heading, "", signed, "", *body.split("\n"), ""]
         path = self._ensure_captures(hub)
-        current = _read_text(path)
-        if _section_bounds(current.split("\n"), CAPTURE_NOTES) is None:
-            current = _with_section_before(current, CAPTURE_NOTES, "", CAPTURED)
-        _write_if_changed(path, None, _with_line_appended(current, CAPTURE_NOTES, entry))
+        lines = _read_text(path).split("\n")
+        first_section = next((i for i, line in enumerate(lines) if line.startswith("## ")), None)
+        if first_section is None:
+            while lines and not lines[-1].strip():
+                lines.pop()
+            lines += ["", *block]
+        else:
+            lines[first_section:first_section] = block
+        _write_if_changed(path, None, "\n".join(lines))
         return self._captures(hub)
 
 

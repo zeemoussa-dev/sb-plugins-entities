@@ -2,7 +2,7 @@
 paths, bodies and status codes match the framework's former `/vault/entities`."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from .accounts import AccountConflict, Accounts
@@ -34,6 +34,7 @@ class SectionTextBody(BaseModel):
 
 
 class CaptureBody(BaseModel):
+    title: str = ""
     text: str
 
 
@@ -53,6 +54,14 @@ def _account_call(call):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except VaultNotReady as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def _signed_in_name(request: Request) -> str:
+    """Who is signed in, for a capture's "Added by". The host's sign-in puts the
+    caller on `request.state.identity`; the Plugin API has no call for it yet, so
+    read it defensively -- a framework that renames it gives "someone", not a 500."""
+    user = getattr(getattr(request.state, "identity", None), "user", None)
+    return getattr(user, "display_name", "") or getattr(user, "username", "") or ""
 
 
 def build_router(registry: EntitiesRegistry, accounts: Accounts) -> APIRouter:
@@ -78,13 +87,13 @@ def build_router(registry: EntitiesRegistry, accounts: Accounts) -> APIRouter:
     def put_personal_notes(kind: str, stem: str, body: SectionTextBody) -> dict:
         return {"text": _account_call(lambda: accounts.set_personal_notes(kind, stem, body.text, body.previous))}
 
-    @router.put("/accounts/{kind}/{stem}/capture-notes")
-    def put_capture_notes(kind: str, stem: str, body: SectionTextBody) -> dict:
-        return _account_call(lambda: accounts.set_capture_notes(kind, stem, body.text, body.previous))
+    @router.post("/accounts/{kind}/{stem}/captures-note")
+    def post_captures_note(kind: str, stem: str) -> dict:
+        return _account_call(lambda: accounts.create_captures_note(kind, stem))
 
     @router.post("/accounts/{kind}/{stem}/captures")
-    def post_capture(kind: str, stem: str, body: CaptureBody) -> dict:
-        return _account_call(lambda: accounts.add_capture(kind, stem, body.text))
+    def post_capture(kind: str, stem: str, body: CaptureBody, request: Request) -> dict:
+        return _account_call(lambda: accounts.add_capture(kind, stem, body.title, body.text, _signed_in_name(request)))
 
     @router.get("/entities")
     def list_entities() -> dict:
