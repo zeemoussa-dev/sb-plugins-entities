@@ -3,6 +3,14 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.9.0] - 2026-10-24
+
+- feat(ui): the Customers & Partners landing fills the screen. A header with totals (customers, partners,
+  affiliates, MACCs signed, opportunities, people); a sticky toolbar with search, Customers/Partners, sort and a
+  Cards/List switch (remembered per browser); a card per company in a full-width grid -- initials badge,
+  description, counts summed over its affiliates, MACC badge, affiliate chips; and a list view with expandable
+  affiliate groups.
+
 ## [1.8.1] - 2026-10-23
 
 - chore: Azure Cost Manager is now called **Azure Customer 360**; the account page's link and messages say so ("Open in Azure Customer 360").
