@@ -4,7 +4,7 @@ import { Breadcrumbs } from '../../pluginHost/breadcrumbs';
 import { NoteText } from '../../pluginHost/noteText';
 import { useUrlState } from '../../pluginHost/state';
 import {
-  accountLink, addCapture, errorText, fetchAccount, fetchAccountCost, saveCaptureNotes, savePersonalNotes,
+  accountLink, addCapture, errorText, fetchAccount, fetchAccountCost, savePersonalNotes,
   type Account, type AccountCost, type AccountKind, type CostRow,
 } from './accountsClient';
 
@@ -173,10 +173,18 @@ function Overview({ account }: { account: Account }) {
   );
 }
 
+/** The whole Captures note -- real ones keep their content in sections of their
+ * own, not only under Notes -- and a new capture as a section of its own, titled
+ * and signed with who added it and when (operator, 2026-10-24). */
 function CapturesPanel({ account, onChange }: { account: Account; onChange: (account: Account) => void }) {
+  const [composing, setComposing] = useState(false);
+  const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const captures = account.captures;
+
+  const close = () => { setComposing(false); setTitle(''); setText(''); setError(null); };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -184,8 +192,8 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
     setSaving(true);
     setError(null);
     try {
-      onChange({ ...account, captures: await addCapture(account.kind, account.stem, text) });
-      setText('');
+      onChange({ ...account, captures: await addCapture(account.kind, account.stem, title, text) });
+      close();
     } catch (caught) {
       setError(errorText(caught));
     } finally {
@@ -194,34 +202,32 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
   };
 
   return (
-    <>
-      <section className="card">
-        <h2 className="entities-card-title">Add a capture</h2>
-        <form onSubmit={submit}>
-          <textarea className="input entities-textarea" rows={3} value={text} placeholder="A word of mouth, a quick update…"
-                    onChange={(event) => setText(event.target.value)} aria-label="New capture" />
+    <section className="card">
+      <div className="entities-account-section-head">
+        <h2 className="entities-card-title">Captures</h2>
+        <div className="entities-actions">
+          {captures.exists && <Link className="btn" to={browse(captures.stem)}>Edit in vault</Link>}
+          {!composing && <button type="button" className="btn btn-primary" onClick={() => setComposing(true)}>New capture</button>}
+        </div>
+      </div>
+      {composing && (
+        <form className="entities-capture-form" onSubmit={submit}>
+          <input className="input" value={title} placeholder="Title -- e.g. Call with the CIO" autoFocus
+                 onChange={(event) => setTitle(event.target.value)} aria-label="Capture title" />
+          <textarea className="input entities-textarea" rows={5} value={text} placeholder="What happened, what was said…"
+                    onChange={(event) => setText(event.target.value)} aria-label="Capture text" />
           <div className="entities-actions">
-            <button type="submit" className="btn btn-primary" disabled={saving || !text.trim()}>{saving ? 'Adding…' : 'Add capture'}</button>
-            <span className="text-muted entities-small">Added under Notes in {account.name} Captures, dated today.</span>
+            <button type="submit" className="btn btn-primary" disabled={saving || !text.trim()}>{saving ? 'Saving…' : 'Save capture'}</button>
+            <button type="button" className="btn" disabled={saving} onClick={close}>Cancel</button>
+            <span className="text-muted entities-small">Its own section at the top, with your name and the time.</span>
           </div>
+          {error && <p className="entities-error">{error}</p>}
         </form>
-        {error && <p className="entities-error">{error}</p>}
-      </section>
-      <EditableSection
-        title="Captures — Notes"
-        text={account.captures.notes}
-        emptyText="No notes captured yet."
-        onSave={async (draft, previous) => {
-          onChange({ ...account, captures: await saveCaptureNotes(account.kind, account.stem, draft, previous) });
-        }}
-      />
-      {account.captures.captured && (
-        <section className="card">
-          <h2 className="entities-card-title">Captured automatically</h2>
-          <div className="markdown-body"><NoteText text={account.captures.captured} /></div>
-        </section>
       )}
-    </>
+      {captures.body
+        ? <div className="markdown-body"><NoteText text={captures.body} /></div>
+        : <p className="text-muted">No captures yet.</p>}
+    </section>
   );
 }
 

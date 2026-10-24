@@ -67,10 +67,11 @@ export interface ActivityItem {
   date: string;
 }
 
+/** The hub's Captures note: the whole body, and the stem the vault editor opens. */
 export interface Captures {
   exists: boolean;
-  notes: string;
-  captured: string;
+  stem: string;
+  body: string;
 }
 
 /** Azure Cost Manager's portfolio row for a linked customer (its service, not this plugin's). */
@@ -141,12 +142,9 @@ export function savePersonalNotes(kind: AccountKind, stem: string, text: string,
   return apiFetch(`${path(kind, stem)}/personal-notes`, { method: 'PUT', body: JSON.stringify({ text, previous }) });
 }
 
-export function saveCaptureNotes(kind: AccountKind, stem: string, text: string, previous: string): Promise<Captures> {
-  return apiFetch(`${path(kind, stem)}/capture-notes`, { method: 'PUT', body: JSON.stringify({ text, previous }) });
-}
-
-export function addCapture(kind: AccountKind, stem: string, text: string): Promise<Captures> {
-  return apiFetch(`${path(kind, stem)}/captures`, { method: 'POST', body: JSON.stringify({ text }) });
+/** A new capture: its own section in the Captures note, signed with who added it and when. */
+export function addCapture(kind: AccountKind, stem: string, title: string, text: string): Promise<Captures> {
+  return apiFetch(`${path(kind, stem)}/captures`, { method: 'POST', body: JSON.stringify({ title, text }) });
 }
 
 export function accountLink(kind: AccountKind, stem: string): string {
