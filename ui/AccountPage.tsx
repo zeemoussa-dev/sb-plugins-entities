@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type KeyboardEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { Breadcrumbs } from '../../pluginHost/breadcrumbs';
+import { VaultNoteEditor } from '../../pluginHost/noteEditor';
 import { NoteText } from '../../pluginHost/noteText';
 import { useUrlState } from '../../pluginHost/state';
 import {
@@ -182,6 +183,8 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<AddedCapture['added'] | null>(null);
+  // The editor loads the note itself; a new capture written beside it needs it to load again.
+  const [revision, setRevision] = useState(0);
   const captures = account.captures;
 
   const close = () => { setComposing(false); setText(''); setError(null); };
@@ -196,6 +199,7 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
       const result = await addCapture(account.kind, account.stem, '', text);
       onChange({ ...account, captures: { exists: result.exists, stem: result.stem, body: result.body } });
       setSaved(result.added);
+      setRevision((current) => current + 1);
       close();
     } catch (caught) {
       setError(errorText(caught));
@@ -240,8 +244,8 @@ function CapturesPanel({ account, onChange }: { account: Account; onChange: (acc
           {saved.note && <span className="text-muted"> {saved.note}</span>}
         </p>
       )}
-      {captures.body
-        ? <div className="markdown-body"><NoteText text={captures.body} /></div>
+      {captures.exists
+        ? <VaultNoteEditor key={revision} stem={captures.stem} offerTidy />
         : <p className="text-muted">No captures yet.</p>}
     </section>
   );
@@ -382,15 +386,25 @@ export function AccountPage() {
           {tab === 'overview' && <Overview account={account} />}
           {tab === 'notes' && (
             <>
-              <EditableSection
-                title="Personal Notes"
-                text={account.personal_notes}
-                emptyText="Nothing written yet."
-                onSave={async (draft, previous) => {
-                  const saved = await savePersonalNotes(account.kind, account.stem, draft, previous);
-                  setAccount({ ...account, personal_notes: saved.text });
-                }}
-              />
+              {account.sections.some((section) => section.name === 'Personal Notes') ? (
+                <section className="card">
+                  <h2 className="entities-card-title">Personal Notes</h2>
+                  {/* The vault's own editor, bounded to this one section: the hub's other
+                      sections are Hermes' and never enter the editor or a save. */}
+                  <VaultNoteEditor stem={account.stem} sections={['Personal Notes']} offerTidy />
+                </section>
+              ) : (
+                // A hub written before the section existed: the plain editor adds it.
+                <EditableSection
+                  title="Personal Notes"
+                  text={account.personal_notes}
+                  emptyText="Nothing written yet."
+                  onSave={async (draft, previous) => {
+                    const saved = await savePersonalNotes(account.kind, account.stem, draft, previous);
+                    setAccount({ ...account, personal_notes: saved.text, sections: [...account.sections, { name: 'Personal Notes', text: saved.text }] });
+                  }}
+                />
+              )}
               <CapturesPanel account={account} onChange={setAccount} />
             </>
           )}
