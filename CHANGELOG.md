@@ -3,6 +3,16 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.10.0] - 2026-10-24
+
+- feat: a capture is a section of its own -- `## <date> — <title>`, then *Added by <name> on <date time>*,
+  newest at the top of the Captures note. The name is the signed-in user's. `POST .../captures` takes
+  `{title, text}`; the old dated line under `## Notes` is gone, and so is the `## Notes`-only edit route.
+- fix: the Notes & Captures tab shows the **whole** Captures note. Real ones keep their content in sections of their
+  own, so showing only `## Notes` / `## Captured` made it look empty. "Edit in vault" opens it in the vault editor;
+  the page will embed that editor once the host shares it (requested of the framework).
+- `POST .../captures-note` makes a hub's Captures note when it has none.
+
 ## [1.9.0] - 2026-10-24
 
 - feat(ui): the Customers & Partners landing fills the screen. A header with totals (customers, partners,
