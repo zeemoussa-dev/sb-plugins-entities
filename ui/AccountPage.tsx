@@ -388,8 +388,7 @@ export function AccountPage() {
             <>
               {account.sections.some((section) => section.name === 'Personal Notes') ? (
                 <section className="card">
-                  <h2 className="entities-card-title">Personal Notes</h2>
-                  {/* The vault's own editor, bounded to this one section: the hub's other
+                  {/* The editor draws the section's own heading. It is the vault's own editor, bounded to this one section: the hub's other
                       sections are Hermes' and never enter the editor or a save. */}
                   <VaultNoteEditor stem={account.stem} sections={['Personal Notes']} offerTidy />
                 </section>
