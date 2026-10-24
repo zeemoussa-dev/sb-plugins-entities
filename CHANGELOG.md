@@ -3,6 +3,10 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.12.1] - 2026-10-24
+
+- docs(template): **a Customer can name its industry** -- the optional `industry` key, a wikilink to the Industry note under Work/Industries (e.g. `"[[Banking]]"`). An affiliate without one takes its parent's. Azure Customer 360's Compass reads that note for the brief and for industry use-case pitches; a Customer without one still works. It is an optional key, so the Template's version stays 2.
+
 ## [1.12.0] - 2026-10-24
 
 - feat(ui): Personal Notes and the Captures note are edited with the vault's own editor (the host's
