@@ -3,6 +3,13 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.11.0] - 2026-10-24
+
+- feat: a new capture is typed in place. "Type a new capture…" opens a writing area in the note's own style; clicking
+  away (or Ctrl+Enter) saves it, and Compass titles it and tidies the typing -- the vault's Tidy rules, enforced:
+  a reply that moved a link, an address or a line break is not used. No Compass, or a refusal, saves it as typed
+  under "Capture". It goes in as its own section, newest first, signed with who added it and when.
+
 ## [1.10.0] - 2026-10-24
 
 - feat: a capture is a section of its own -- `## <date> — <title>`, then *Added by <name> on <date time>*,
