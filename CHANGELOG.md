@@ -3,6 +3,15 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.12.0] - 2026-10-24
+
+- feat(ui): Personal Notes and the Captures note are edited with the vault's own editor (the host's
+  `pluginHost/noteEditor`, framework `35ad6ba`, an additive export under Plugin API 12): click a paragraph to edit
+  that section in place, autosave, Ctrl+S, Esc, "Tidy the typing" with Compass (`offerTidy`), and a refusal --
+  text kept on screen -- when an agent wrote the note meanwhile. Personal Notes is bounded to that one section, so
+  the hub's Hermes-owned sections never enter the editor or a save. A hub with no Personal Notes section yet keeps
+  the plain editor, which adds it. Needs a framework at or after `35ad6ba`: an older one fails this plugin's build.
+
 ## [1.11.0] - 2026-10-24
 
 - feat: a new capture is typed in place. "Type a new capture…" opens a writing area in the note's own style; clicking
