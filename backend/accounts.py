@@ -14,7 +14,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from . import commitment
+from . import capture_writer, commitment
 from .opportunities import (
     Opportunities, OpportunityError, OpportunityNotFound, _exists, _frontmatter_text, _long,
     _notes_in_own_folders, _read_text, _section_bounds, _tag_slug, _text,
@@ -337,7 +337,13 @@ class Accounts:
         body = _text_block(text)
         if not body:
             raise OpportunityError("a capture needs some text")
-        title = _text(title).lstrip("#").strip() or "Capture"
+        added = {"tidied": False, "note": ""}
+        if not _text(title):
+            # Typed in place with no title: Compass titles it and fixes the typing.
+            composed = capture_writer.compose(self._api, body)
+            title, body = composed["title"], _text_block(composed["text"]) or body
+            added.update(tidied=composed["tidied"], note=composed["note"])
+        title = _text(title).lstrip("#").strip() or capture_writer.FALLBACK_TITLE
         now = datetime.now()
         heading = f"## {now.date().isoformat()} — {title}"
         signed = f"*Added by {_text(author) or 'someone'} on {now.strftime('%Y-%m-%d %H:%M')}*"
@@ -352,7 +358,7 @@ class Accounts:
         else:
             lines[first_section:first_section] = block
         _write_if_changed(path, None, "\n".join(lines))
-        return self._captures(hub)
+        return {**self._captures(hub), "added": {"title": title, **added}}
 
 
 def _text_block(text) -> str:
