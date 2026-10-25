@@ -51,7 +51,10 @@
       "macc_start and macc_end are dates, YYYY-MM-DD, and macc_end is not before macc_start",
       "macc_includes_marketplace and macc_subtracts_credits are true or false: whether Marketplace counts toward the burn-down and whether credits reduce it",
       "macc_affiliates says how a parent's affiliates relate to its commitment: roll up (they sign none of their own, so their consumption burns the parent's) or own (each signed its own, so only the parent's own enrollments burn it). roll up when absent",
-      "industry is optional: a wikilink to the Industry note under Work/Industries the customer belongs to, e.g. \"[[Banking]]\". An affiliate without one takes its parent's. Compass reads that note to brief the seller and to recommend industry use cases; a Customer without one still works"
+      "industry is optional: a wikilink to the Industry note under Work/Industries the customer belongs to, e.g. \"[[Banking]]\". An affiliate without one takes its parent's. Compass reads that note to brief the seller and to recommend industry use cases; a Customer without one still works",
+      "account_manager is optional: a wikilink to the Core42 Person note of the customer's account manager, by email with the name as alias, e.g. \"[[ajay.malik@core42.ai|Ajay Malik]]\". An affiliate without one takes its parent's",
+      "segment is optional: the sales segment the customer is covered in, e.g. Strategic Accounts, Major Accounts, Scale Accounts & ISVs",
+      "pss is optional: a list of wikilinks to the Person notes of the solution specialists (PSS) engaged on the customer, in the same form as account_manager"
     ],
     "sections": [
       {

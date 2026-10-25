@@ -3,6 +3,16 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.13.0] - 2026-10-25
+
+- feat(api): **an opportunity's summary carries `created` and `technologies`** (additive). Azure Customer 360's pipeline review reads `created` to weigh an opportunity against the customer's trend before it existed, and `technologies` to know what part of the bill it covers.
+- docs(template): **a Customer can name its account manager, segment and PSS.** Three optional keys:
+  - `account_manager`: a wikilink to the Core42 Person note, by email with the name as alias. An affiliate without one takes its parent's.
+  - `segment`: the sales segment the customer is covered in.
+  - `pss`: a list of wikilinks to the solution specialists engaged on the customer.
+
+  They are optional keys, so the Template's version stays 2.
+
 ## [1.12.1] - 2026-10-24
 
 - docs(template): **a Customer can name its industry** -- the optional `industry` key, a wikilink to the Industry note under Work/Industries (e.g. `"[[Banking]]"`). An affiliate without one takes its parent's. Azure Customer 360's Compass reads that note for the brief and for industry use-case pitches; a Customer without one still works. It is an optional key, so the Template's version stays 2.

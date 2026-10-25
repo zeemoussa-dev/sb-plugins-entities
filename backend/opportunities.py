@@ -583,6 +583,10 @@ class Opportunities:
             "expected_monthly_usd": int(expected) if expected.isdigit() else None,
             "plan": parse_plan(self._api.vault.read_section(path, PLAN_SECTION)),
             "updated": _text(frontmatter.get("updated")),
+            # For a reader that weighs an opportunity against what came before it (Azure
+            # Customer 360's pipeline review, 2026-10-25): when it was opened, and what it covers.
+            "created": _text(frontmatter.get("created")),
+            "technologies": listed("technologies"),
         }
 
     def _owners_of(self, customer: dict, hubs: list[dict], include_affiliates: bool) -> list[tuple[dict, dict | None]]:

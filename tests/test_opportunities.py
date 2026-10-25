@@ -164,7 +164,7 @@ def test_a_template_v2_note_lists_with_empty_v3_fields(service):
         "id": "v2-id", "title": "Legacy Deal", "stem": "Legacy Deal", "customer": "Contoso", "affiliate": None,
         "status": "Open", "stage": "Qualified", "product": ["azure"], "route": "direct-ea-mca", "partner": [],
         "billing_profile": "", "consumption_start": "", "expected_monthly_usd": 4000, "plan": [],
-        "updated": "2026-01-02",
+        "updated": "2026-01-02", "created": "2026-01-02", "technologies": [],
     }
 
 
