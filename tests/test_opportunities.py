@@ -237,6 +237,16 @@ def test_an_affiliate_opportunity_lives_under_the_affiliate_and_carries_its_tag(
     assert hub_text.endswith("## Opportunities\n\n- [[Labs GPU]]\n")
 
 
+def test_create_can_write_the_summary_and_actions_only(service, vault):
+    service.create("Contoso", "AI Grounding", {}, [], {"Summary": "Why them.\n\n- runs Fabric", "Actions": "- Workshop"})
+
+    _, body = read_note(opportunity_folder(vault, "Contoso", "Opportunities", "AI Grounding", "AI Grounding.md"))
+
+    assert "## Summary\n\nWhy them.\n\n- runs Fabric\n" in body and "## Actions\n\n- Workshop\n" in body
+    with pytest.raises(ValueError, match="only Summary, Actions"):
+        service.create("Contoso", "Other", {}, [], {"Related": "- [[X]]"})
+
+
 def test_create_refuses_what_the_template_forbids(service):
     cases = [
         ("Legacy Deal", {}, []),                                  # title taken

@@ -3,6 +3,10 @@
 All notable changes to the Entities plugin. The framework (Second Brain) is a separate
 repository and is never copied in here.
 
+## [1.14.0] - 2026-10-25
+
+- feat(api): **an opportunity can be created with its Summary and Actions written** (additive). `create(owner, title, fields, plan, sections)` takes `{"Summary": ..., "Actions": ...}`. Any other section is refused, because the plan, Related and History & Captures stay this service's own. Azure Customer 360 files the customer's side of a Compass pitch there.
+
 ## [1.13.0] - 2026-10-25
 
 - feat(api): **an opportunity's summary carries `created` and `technologies`** (additive). Azure Customer 360's pipeline review reads `created` to weigh an opportunity against the customer's trend before it existed, and `technologies` to know what part of the bill it covers.

@@ -53,6 +53,10 @@ CUSTOMER_DEFAULTS = {"type": "Customer", "affiliate_of": "", "tags": ["kind/cust
 CUSTOMER_SECTIONS = ["Summary", "Personal Notes", "Actions", "Related", "Affiliates", "History & Captures"]
 AFFILIATES_SECTION = "Affiliates"
 PLAN_SECTION = "Consumption Plan"
+# The sections a caller may write when creating an opportunity: the prose ones. The plan,
+# Related and History & Captures stay this service's own (2026-10-25: Azure Customer 360
+# files the customer view of a Compass pitch in Summary, its next steps in Actions).
+WRITABLE_ON_CREATE = ("Summary", "Actions")
 LINK_BACK_SECTION = "Opportunities"
 HISTORY_SECTION = "Log"
 
@@ -725,7 +729,11 @@ class Opportunities:
                                    'names the file after the title (no \\ / : * ? " < > |)')
         return text
 
-    def create(self, owner_stem: str, title: str, fields: dict, plan: list[dict]) -> dict:
+    def create(self, owner_stem: str, title: str, fields: dict, plan: list[dict],
+               sections: dict[str, str] | None = None) -> dict:
+        unknown = sorted(set(sections or {}) - set(WRITABLE_ON_CREATE))
+        if unknown:
+            raise OpportunityError(f"only {', '.join(WRITABLE_ON_CREATE)} can be written when creating; not {', '.join(unknown)}")
         hubs = self._hubs()
         owner = self._hub(owner_stem, hubs)
         customer = self._customer_of(owner, hubs)
@@ -757,6 +765,7 @@ class Opportunities:
         related = [f"- [[{owner['stem']}]]"] + [f"- [[{stem}]]" for stem in frontmatter["partner"]]
         children_index = [f"- [[{title}-{child['suffix']}|{child['label']}]]" for child in CHILDREN]
         contents = {
+            **{name: str(text or "").strip() for name, text in (sections or {}).items()},
             PLAN_SECTION: plan_table(rows),
             "Related": "\n".join(related),
             "History & Captures": "\n".join(children_index),
